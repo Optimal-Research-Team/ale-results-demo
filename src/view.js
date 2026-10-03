@@ -342,7 +342,6 @@ const COLLECTED = formatLongDate(V.report.collectedAt.slice(0, 10));
 const PUBLISHED = formatLongDate(V.report.publishedAt.slice(0, 10));
 const YEAR = formatYear(V.report.examDate);
 const PREV_YEAR = formatYear(PREV_EXAM);
-const nP = VER.priorities.length;
 const winsUseLab = winsPage.some(m => !isTarget(goalOf(m)));
 const attnSystems = SYSTEMS.filter(s => needs(s.worst));
 /* Names every state that needs attention, worst first ("1 out of range · 2
@@ -444,7 +443,9 @@ const R_AT = [0.50, 0.685, 0.87];                       // ring radius per year,
    mesh, photograph, video or fallback behind it. Scrolling turns the year.
    The copy is deliberately spare: the chart already says 33 of 39. */
 function targetHero() {
-  const p1 = VER.priorities[0], mv1 = BY_ID[p1.biomarkerIds[0]], dp1 = distParts(mv1);
+  // the hero's second beat is the result furthest from target, taken from the
+  // data rather than from anything the clinic has to write
+  const mv1 = ATTENTION[0], dp1 = mv1 ? distParts(mv1) : null;
   return `<section id="scan" class="s-scan s-thero" aria-labelledby="thH">
   <div class="scan-track"><div class="scan-frame">
     <canvas class="th-hatch" id="thHatch" aria-hidden="true"></canvas>
@@ -460,21 +461,21 @@ function targetHero() {
         <div class="byline"><span class="avatar" aria-hidden="true">${esc(V.clinician.initials)}</span><span>Reviewed by <b>${esc(NP_NAME)}</b><br><span class="num">${esc(PUBLISHED)}</span></span></div>
         ${nextVisit()}
       </div>
-      <div class="sc-cB" aria-hidden="true">
-        <p class="eyebrow">Your first priority · ${esc(SYSTEM_LABEL[mv1.marker.system])}</p>
-        <h2 class="d2">${emNoun(p1.title, mv1.marker.name)}</h2>
+      ${mv1 ? `<div class="sc-cB" aria-hidden="true">
+        <p class="eyebrow">Furthest from target · ${esc(SYSTEM_LABEL[mv1.marker.system])}</p>
+        <h2 class="d2">${esc(mv1.marker.name)}</h2>
         <div class="sc-val"><span class="v num">${esc(valText(mv1, mv1.latest))}</span><span class="u">${esc(unitOf(mv1))}</span>${stateTag(mv1.latest.state)}${dp1 ? `<span class="sc-d">${esc(distLine(mv1))}</span>` : ''}</div>
-        <div class="sc-blinks"><button type="button" class="sc-why" data-prio-sheet="0">Why, and what we'll do ${ICON.arrow}</button><a class="textlink" href="#priorities">Your three priorities ${ICON.chev}</a></div>
-      </div>
+        <div class="sc-blinks"><button type="button" class="sc-why" data-open-marker="${esc(mv1.marker.id)}">See its history ${ICON.arrow}</button><a class="textlink" href="#attention">All ${esc(spell(ATTENTION.length).toLowerCase())} to work on ${ICON.chev}</a></div>
+      </div>` : ''}
     </div>
-    <p class="sc-foot"><a href="#priorities">Your first priority · ${esc(p1.title)} ${ICON.arrow}</a></p>
+    ${mv1 ? `<p class="sc-foot"><a href="#attention">Furthest from target · ${esc(mv1.marker.name)} ${ICON.arrow}</a></p>` : ''}
   </div></div>
 </section>`;
 }
 
 function ringsHero() {
-  const p1 = VER.priorities[0], mv1 = BY_ID[p1.biomarkerIds[0]], dp1 = distParts(mv1);
-  const stats = [[S.healthy, 'healthy'], [attention, 'to watch'], [nP, 'priorities']];
+  const mv1 = ATTENTION[0], dp1 = mv1 ? distParts(mv1) : null;
+  const stats = [[S.healthy, 'healthy'], [attention, 'to watch'], [ATTENTION.length, 'to work on']];
   const C = 500, TAU = Math.PI * 2, N = SYSTEMS.length;
   const pol = (r, a2) => [C + r * Math.cos(a2), C + r * Math.sin(a2)];
   // systems take equal sectors from twelve o'clock, in the page's own order
@@ -541,25 +542,25 @@ function ringsHero() {
         <h1 id="rgH">${esc(VER.headline)}${VER.headlineEmphasis ? ` <em>${esc(VER.headlineEmphasis)}</em>` : ''}</h1>
         <div class="byline"><span class="avatar" aria-hidden="true">${esc(V.clinician.initials)}</span><span>Reviewed by <b>${esc(NP_NAME)}</b><br><span class="num">${esc(PUBLISHED)}</span></span></div>
         <div class="capsule"><button type="button" data-toast="In the portal this opens Messages with ${esc(NP_FIRST)}.">Message ${esc(NP_FIRST)}</button><button type="button" class="solid" data-toast="In the portal this downloads your report as a PDF.">${ICON.dl}Download PDF</button></div>
-        <nav class="sc-stats" aria-label="Your results at a glance">${[[S.healthy, 'markers in a healthy range', '#target', ''], [attention, 'markers to watch this year', '#results', ' data-watch'], [nP, `priorities, chosen by ${NP_FIRST}`, '#priorities', '']].map(([n, l, h, x]) => `<a href="${h}"${x}><b class="num" data-count="${n}">${n}</b><span>${esc(l)}</span></a>`).join('')}</nav>
+        <nav class="sc-stats" aria-label="Your results at a glance">${[[S.healthy, 'markers in a healthy range', '#target', ''], [attention, 'markers to watch this year', '#results', ' data-watch'], [ATTENTION.length, 'results outside our target', '#attention', '']].map(([n, l, h, x]) => `<a href="${h}"${x}><b class="num" data-count="${n}">${n}</b><span>${esc(l)}</span></a>`).join('')}</nav>
         ${nextVisit()}
       </div>
       <div class="sc-cB" aria-hidden="true">
-        <p class="eyebrow">Your first priority · ${esc(SYSTEM_LABEL[mv1.marker.system])}</p>
-        <h2 class="d2">${emNoun(p1.title, mv1.marker.name)}</h2>
+        <p class="eyebrow">Furthest from target · ${esc(SYSTEM_LABEL[mv1.marker.system])}</p>
+        <h2 class="d2">${esc(mv1.marker.name)}</h2>
         <div class="sc-val"><span class="v num">${esc(valText(mv1, mv1.latest))}</span><span class="u">${esc(unitOf(mv1))}</span>${stateTag(mv1.latest.state)}${dp1 ? `<span class="sc-d">${esc(distLine(mv1))}</span>` : ''}</div>
-        <div class="sc-blinks"><button type="button" class="sc-why" data-prio-sheet="0">Why, and what we'll do ${ICON.arrow}</button><a class="textlink" href="#priorities">Your three priorities ${ICON.chev}</a></div>
+        <div class="sc-blinks"><button type="button" class="sc-why" data-open-marker="${esc(mv1.marker.id)}">See its history ${ICON.arrow}</button><a class="textlink" href="#attention">All ${esc(spell(ATTENTION.length).toLowerCase())} to work on ${ICON.chev}</a></div>
       </div>
     </div>
-    <p class="sc-foot"><a href="#priorities">Your first priority · ${esc(p1.title)} ${ICON.arrow}</a></p>
+    <p class="sc-foot"><a href="#attention">Furthest from target · ${esc(mv1.marker.name)} ${ICON.arrow}</a></p>
   </div></div>
   <p class="sr">${esc(SCAN_SUMMARY)}</p>
 </section>`;
 }
 
 function scanHero() {
-  const stats = [[S.healthy, 'healthy', 'markers in a healthy range', '#target', ''], [attention, 'to watch', 'markers to watch this year', '#results', ' data-watch'], [nP, 'priorities', `priorities, chosen by ${NP_FIRST}`, '#priorities', '']];
-  const p1 = VER.priorities[0], mv = BY_ID[p1.biomarkerIds[0]], dp = distParts(mv);
+  const stats = [[S.healthy, 'healthy', 'markers in a healthy range', '#target', ''], [attention, 'to watch', 'markers to watch this year', '#results', ' data-watch'], [ATTENTION.length, 'to work on', 'results outside our target', '#attention', '']];
+  const mv = ATTENTION[0], dp = mv ? distParts(mv) : null;
   const sys1 = SYSTEM_LABEL[mv.marker.system];
   return `<section id="scan" class="s-scan" aria-labelledby="scH">
   <div class="scan-track"><div class="scan-frame">
@@ -575,7 +576,7 @@ function scanHero() {
     <div class="bay-rail" aria-hidden="true">
       <div><b class="num">${S.healthy}</b><span>Healthy</span><i style="--w:${Math.round(S.healthy / S.total * 100)}%;--c:#A4C29D"></i></div>
       <div><b class="num">${attention}</b><span>To watch</span><i style="--w:${Math.round(attention / S.total * 100)}%;--c:#E0A340"></i></div>
-      <div><b class="num">${nP}</b><span>Priorities</span><i style="--w:${Math.round(nP / S.total * 100)}%;--c:#E58A7A"></i></div>
+      <div><b class="num">${ATTENTION.length}</b><span>To work on</span><i style="--w:${Math.round(ATTENTION.length / S.total * 100)}%;--c:#E58A7A"></i></div>
     </div>
     <div class="scan-stage" id="scanStage"></div>
     <div class="sample-stage" id="sampleStage" role="img" aria-label="${esc(`Illustration of ${spell(SAMPLES.length).toLowerCase()} sample containers from your blood draw.`)}"></div>
@@ -593,19 +594,26 @@ function scanHero() {
       </div>
       <div class="sc-cB" aria-hidden="true">
         <p class="eyebrow">Your first priority · ${esc(sys1)}</p>
-        <h2 class="d2">${emNoun(p1.title, mv.marker.name)}</h2>
+        <h2 class="d2">${esc(mv.marker.name)}</h2>
         <div class="sc-val"><span class="v num">${esc(valText(mv, mv.latest))}</span><span class="u">${esc(unitOf(mv))}</span>${stateTag(mv.latest.state)}${dp ? `<span class="sc-d">${esc(distLine(mv))}</span>` : ''}</div>
         <div class="sc-rb">${rangeBar(mv, { size: 'tv', ticks: true, zones: true, prev: true, glide: true, dark: true })}</div>
-        <div class="sc-blinks"><button type="button" class="sc-why" data-prio-sheet="0">Why, and what we'll do ${ICON.arrow}</button><a class="textlink" href="#priorities">Your three priorities ${ICON.chev}</a></div>
+        <div class="sc-blinks"><button type="button" class="sc-why" data-open-marker="${esc(mv.marker.id)}">See its history ${ICON.arrow}</button><a class="textlink" href="#attention">All ${esc(spell(ATTENTION.length).toLowerCase())} to work on ${ICON.chev}</a></div>
       </div>
     </div>
-    <p class="sc-foot"><a href="#priorities">Your first priority · ${esc(p1.title)} ${ICON.arrow}</a></p>
+    <p class="sc-foot"><a href="#attention">Furthest from target · ${esc(mv.marker.name)} ${ICON.arrow}</a></p>
   </div></div>
   <p class="sr">${esc(SCAN_SUMMARY)}</p>
 </section>`;
 }
 
-const RAIL = [['scan', 'Body'], ['priorities', 'Priorities'], ['plan', 'Plan'], ['note', 'Note'], ['target', 'Target'], ['progress', 'Progress'], ['samples', 'Samples'], ['results', 'Results']];
+const HERO_Q = new URLSearchParams(location.search).get('hero') || 'target';
+/* The rail is built from what the page actually renders. With the target as
+   the hero there is no separate #target section, and the hero is the chart -
+   so that entry would be a link to nothing and "Body" would name a body map
+   this page no longer has. */
+const RAIL = (HERO_Q === 'target'
+  ? [['scan', 'Target'], ['attention', 'Attention'], ['plan', 'Plan'], ['note', 'Note'], ['progress', 'Progress'], ['samples', 'Samples'], ['results', 'Results']]
+  : [['scan', 'Body'], ['attention', 'Attention'], ['plan', 'Plan'], ['note', 'Note'], ['target', 'Target'], ['progress', 'Progress'], ['samples', 'Samples'], ['results', 'Results']]);
 /* chapter marks: the page reads as two halves, Maya's narrative then the patient's own exploring */
 const partTwo = () => `<div class="s-p2"><div class="wrap p2o"><p class="p2-k">Part two</p><p class="p2-h">Your year in <em>review</em></p></div></div>`;
 const chap = (n, t) => `<p class="chap"><span class="chap-n">${n}</span><span class="chap-t">${esc(t)}</span></p>`;
@@ -656,7 +664,7 @@ function target() {
     <div class="tg-copy">
       <div class="head"><p class="eyebrow">Your longevity target</p>
         <h2 class="tg-h mr" id="tgH"><span class="tg-num num"><span class="tg-big">${S.healthy}</span><span class="tg-of">of ${S.total}</span></span><span class="tg-rest">markers are in a <em>healthy range</em></span></h2>
-        <p class="lede">${spell(o)} ${o === 1 ? 'is' : 'are'} at our longevity target. ${spell(attention)} need${attention === 1 ? 's' : ''} attention, and your ${spell(nP).toLowerCase()} priorities are built around them.</p></div>
+        <p class="lede">${spell(o)} ${o === 1 ? 'is' : 'are'} at our longevity target. ${spell(attention)} need${attention === 1 ? 's' : ''} attention.</p></div>
       <ul class="tg-legend" aria-label="The four states">${legend}${hollow}</ul>
       <div class="tg-ctl"><button type="button" class="tg-sw" role="switch" aria-checked="false" id="tgCmp"><i aria-hidden="true"></i>Compare with ${esc(PREV_YEAR)}</button>
         <button type="button" class="tg-lk" id="tgList" aria-expanded="false" aria-controls="tgListBox">View as list</button></div>
@@ -670,22 +678,51 @@ function target() {
   </section>`;
 }
 
-function priorities() {
-  const rows = VER.priorities.map((p, i) => {
-    const mv = BY_ID[p.biomarkerIds[0]], dp = distParts(mv);
+/* How far past the goal band, as a fraction of the marker's own scale, so two
+   markers in different units can be ranked against each other. */
+function distFrac(mv) {
+  const g = goalOf(mv); if (!g) return 0;
+  const v = mv.latest.value; if (v == null || inBand(g, v)) return 0;
+  const [a, b] = mv.bands.domain, span = (b - a) || 1;
+  return (v < g.lo ? g.lo - v : v - g.hi) / span;
+}
+const TREND_WORD = { improved: 'Improving', worsened: 'Moving away', steady: 'Holding', new: 'First measure' };
+const trendWord = mv => TREND_WORD[mv.trend] || 'Holding';
+/* The movement in figures, never in adjectives: "1.08 → 0.92 since 2024". */
+function sinceLine(mv) {
+  const f = firstPt(mv);
+  if (!f || f === mv.latest || isOrd(mv)) return '';
+  return `${valText(mv, f)} → ${valText(mv, mv.latest)} since ${formatYear(f.examDate)}`;
+}
+
+/* What needs attention. Derived from state alone - every marker that came back
+   borderline or out of range, worst first - so it costs the clinic no writing
+   per patient and still names more than a hand-picked three would. Metrics
+   only: a value, where it sits, how far it has to go, what it did. No prose.
+   The clinical judgement is already in the ranges; this just reports them. */
+const ATTENTION = MARKERS
+  .filter(m => needs(m.latest.state))
+  .sort((a, b) => STATE_RANK[a.latest.state] - STATE_RANK[b.latest.state]
+    || (distFrac(b) - distFrac(a)));
+
+function attentionSection() {
+  if (!ATTENTION.length) return '';
+  const rows = ATTENTION.map((mv, i) => {
+    const dp = distParts(mv);
     const hist = mv.points.map((x, k) => `<span class="${k === mv.points.length - 1 ? 'cur' : ''}"><span class="yr">${esc(formatYear(x.examDate))}</span> ${esc(valText(mv, x))}</span>`).join('<span class="ar">→</span>');
-    const also = p.biomarkerIds.slice(1).map(id => BY_ID[id]).filter(Boolean).map(a =>
-      `<button type="button" class="also" data-open-marker="${esc(a.marker.id)}"><b>${esc(a.marker.name)}</b><span class="num">${esc(valText(a, a.latest))} ${esc(unitOf(a))}</span>${stateTag(a.latest.state)}</button>`).join('');
-    const open = i === 0; // v5: the first priority leads open; the others wait as peeks (desktop and phone)
+    const nc = nextCheckFor(mv);
+    // six cards, not three: on a phone they all start closed so the section
+    // reads as an index, the same rule the ledger's groups follow
+    const open = i === 0 && !MQ.phone.matches;
     return `<article class="prio" data-open="${open}">
       <button type="button" class="prio-head" aria-expanded="${open}" aria-controls="pb${i}" data-prio="${i}">
         ${plateImg(mv.marker.system, 'plate-prio')}
-        <span class="p-num" aria-hidden="true">${i + 1}</span>
-        <span class="p-meta"><span class="sr">${ORD[i]} priority · </span>${esc(SYSTEM_LABEL[mv.marker.system])}</span>
-        <span class="p-title">${esc(p.title)}</span>
+        <span class="p-num" aria-hidden="true"><i class="p-pip bg-${mv.latest.state}"></i></span>
+        <span class="p-meta">${esc(SYSTEM_LABEL[mv.marker.system])}</span>
+        <span class="p-title">${esc(mv.marker.name)}${mv.marker.long ? `<small>${esc(mv.marker.long)}</small>` : ''}</span>
         <span class="prio-peek"><span class="num">${esc(valText(mv, mv.latest))}</span><span class="pk-u">${esc(unitOf(mv))}</span>${stateTag(mv.latest.state)}<span class="pk-rb">${rangeBar(mv, { size: 'sm', target: true })}</span></span>
         ${dp ? `<span class="p-dist s-${mv.latest.state}">${esc(distLine(mv))}</span>` : '<span class="p-dist"></span>'}
-        <span class="p-plan"><b>What we'll do</b>${esc(p.plan)}</span>
+        <span class="p-plan"><b>${esc(trendWord(mv))}</b>${esc(sinceLine(mv))}</span>
         <span class="chev-w">${ICON.chev}</span>
       </button>
       <div class="clip"><div class="clip-in" id="pb${i}"${open ? '' : ' inert'}><div class="prio-grid">
@@ -697,22 +734,18 @@ function priorities() {
           <p class="hist num">${hist}${dp ? `<span class="hd s-${mv.latest.state}">${esc(distLine(mv))}</span>` : ''}</p>
           ${dp ? `<div class="readout"><span class="rd-l">To reach target</span><span class="rd-v s-${mv.latest.state}"><b class="num">${esc(dp.n)}</b> ${esc(dp.u)} ${dp.dir}</span></div>` : ''}
         </div>
-        <div class="why"><div class="kicker">Why it matters</div><p>${esc(p.body)}</p>
-          <button type="button" class="wwd" aria-expanded="false">What we'll do ${ICON.chev}</button>
-          <div class="kicker k2">What we'll do</div><p class="plan-t">${esc(p.plan)}</p>
-          ${(() => { const nc = nextCheckFor(p); return nc
-            ? `<a class="p-when" href="#plan"><span class="pw-k">Next measured</span><span class="pw-d num">${esc(formatShortDate(nc.due))}</span><span class="pw-t">${esc(nc.title)}</span>${ICON.arrow}</a>`
-            : ''; })()}
-          ${also}
+        <div class="why"><div class="kicker">What it is</div><p>${esc(mv.marker.copy.about)}</p>
+          ${nc ? `<a class="p-when" href="#plan"><span class="pw-k">Next measured</span><span class="pw-d num">${esc(formatShortDate(nc.due))}</span><span class="pw-t">${esc(nc.title)}</span>${ICON.arrow}</a>` : ''}
           <button type="button" class="textlink" data-open-marker="${esc(mv.marker.id)}">See the full history ${ICON.arrow}</button>
         </div>
       </div></div></div>
     </article>`;
   }).join('');
-  return `<section id="priorities" class="s-prios"><div class="wrap">${chap('Part one', 'Your focus for the year')}</div><div class="wrap">
-    <div class="head split"><div><p class="eyebrow"><span class="pr-a">Your focus for the year<span class="sep"> · </span>chosen by ${esc(NP_FIRST)}</span><span class="pr-b">Chosen by ${esc(NP_FIRST)}</span></p>
-    <h2 class="d2">Your ${spell(nP).toLowerCase()} <span class="ringed"><em>priorities</em><svg class="ring" aria-hidden="true" focusable="false"><ellipse cx="50%" cy="50%" rx="49.3%" ry="47%" pathLength="1"/></svg></span></h2></div>
-    <p class="lede">Chosen by ${esc(NP_FIRST)} from your results, in order of importance.</p></div>
+  const n = ATTENTION.length;
+  return `<section id="attention" class="s-prios"><div class="wrap">${chap('Part one', 'What needs attention')}</div><div class="wrap">
+    <div class="head split"><div><p class="eyebrow">From your bloodwork on ${esc(COLLECTED)}</p>
+    <h2 class="d2">${esc(spell(n))} <span class="ringed"><em>to work on</em><svg class="ring" aria-hidden="true" focusable="false"><ellipse cx="50%" cy="50%" rx="49.3%" ry="47%" pathLength="1"/></svg></span></h2></div>
+    <p class="lede">Every result outside our longevity target, the furthest first. The other <span class="num">${S.total - n}</span> came back where we want them.</p></div>
     <div class="prios">${rows}</div>
   </div></section>`;
 }
@@ -980,26 +1013,24 @@ function icsFor(steps) {
    a step that names one of the priority's own markers in its title or detail -
    so this never invents a schedule the plan does not already state. No match,
    no line. */
-function nextCheckFor(p) {
-  const names = p.biomarkerIds.map(id => BY_ID[id]).filter(Boolean).map(m => m.marker.name.toLowerCase());
-  return VER.nextSteps.filter(s2 => s2.due && s2.due >= TODAY).find(s2 => {
-    const hay = `${s2.title} ${s2.detail}`.toLowerCase();
-    return names.some(n => hay.includes(n));
-  }) || null;
+function nextCheckFor(mv) {
+  const n = mv.marker.name.toLowerCase();
+  return VER.nextSteps.filter(s2 => s2.due && s2.due >= TODAY)
+    .find(s2 => `${s2.title} ${s2.detail}`.toLowerCase().includes(n)) || null;
 }
 
 function printSummary() {
   const dated = VER.nextSteps.filter(s2 => s2.due);
-  const pr = VER.priorities.map((p, i) => {
-    const mv = BY_ID[p.biomarkerIds[0]];
-    return `<li><span class="ps-n num">${i + 1}</span><span class="ps-b"><b>${esc(p.title)}</b>
-      <small>${esc(SYSTEM_LABEL[mv.marker.system])} · ${esc(mv.marker.name)} ${esc(valText(mv, mv.latest))}${unitOf(mv) ? ' ' + esc(unitOf(mv)) : ''}</small></span></li>`;
+  const pr = ATTENTION.map(mv => {
+    const d = distParts(mv);
+    return `<li><span class="ps-n num"><i class="p-pip bg-${mv.latest.state}"></i></span><span class="ps-b"><b>${esc(mv.marker.name)} <span class="num">${esc(valText(mv, mv.latest))}</span>${unitOf(mv) ? ' <span class="ps-u">' + esc(unitOf(mv)) + '</span>' : ''}</b>
+      <small>${esc(SYSTEM_LABEL[mv.marker.system])}${d ? ' · ' + esc(distLine(mv)) : ''}</small></span></li>`;
   }).join('');
   const dt = dated.map(s2 => `<li><span class="ps-d num">${esc(formatShortDate(s2.due))}</span>
     <span class="ps-b"><b>${esc(s2.title)}</b><small>${esc(s2.detail)}</small></span></li>`).join('');
   return `<section class="p-sum" aria-hidden="true">
     <div class="wrap"><div class="ps-grid">
-      <div><h2>Your ${esc(spell(VER.priorities.length).toLowerCase())} priorities</h2><ol class="ps-l">${pr}</ol></div>
+      <div><h2>${esc(spell(ATTENTION.length))} to work on</h2><ol class="ps-l">${pr}</ol></div>
       <div><h2>Your dates</h2><ol class="ps-l ps-dates">${dt}</ol></div>
     </div>
     <p class="ps-f">${esc(CLINIC.name)} · ${esc(CLINIC.city)} · ${esc(CLINIC.phone)}<span class="sep"> · </span>Reviewed by ${esc(NP_NAME)}, ${esc(PUBLISHED)}</p></div>
@@ -1060,8 +1091,7 @@ function signoff() {
 
 /* One story order on every viewport: the scan hands off to the priorities, the
    plan answers "what do I do", and Part two is the patient's own exploring. */
-const HERO_Q = new URLSearchParams(location.search).get('hero') || 'target';
-$('#app').innerHTML = (HERO_Q === 'target' ? targetHero() : HERO_Q === 'rings' ? ringsHero() : scanHero()) + printSummary() + srail() + priorities() + planCard() + partTwo()
+$('#app').innerHTML = (HERO_Q === 'target' ? targetHero() : HERO_Q === 'rings' ? ringsHero() : scanHero()) + printSummary() + srail() + attentionSection() + planCard() + partTwo()
   + note() + (HERO_Q === 'target' ? '' : target()) + moved() + samples() + ledgerShell() + closing() + signoff();
 renderLedger();
 
@@ -1303,10 +1333,8 @@ function openDrawer(arg) {
   openMarkerId = req.context && req.context !== 'marker' ? null : (req.id != null ? String(req.id) : null);
   if (req.context === 'system') return sysSheet(req.id);
   if (req.context === 'list') return listSheet();
-  if (req.context === 'priority') return prioSheet(req.i | 0);
   if (req.context === 'dates') return datesSheet();
   const id = req.id, mv = BY_ID[id]; if (!mv) return;
-  const pr = VER.priorities.find(p => p.biomarkerIds.includes(id));
   const you = x => x.state === mv.latest.state && inBand(x, mv.latest.value);
   const youL = '<span class="you-l">You</span>';
   const rows = isOrd(mv)
@@ -1323,7 +1351,6 @@ function openDrawer(arg) {
       <div class="dr-val"><span class="v num">${esc(valText(mv, mv.latest))}</span>${unitOf(mv) ? `<span class="u">${esc(unitOf(mv))}</span>` : ''}${stateTag(mv.latest.state)}${mv.carriedForward ? `<span class="once">Measured ${esc(formatYear(mv.latest.examDate))}, once in a lifetime</span>` : ''}</div>
       <div class="dr-rb">${rangeBar(mv, { ticks: true, zones: true })}<p class="sr">${esc(railSentence(mv))}</p></div>
       ${!isOrd(mv) && mv.points.length > 1 ? `<div class="dr-sec"><h3>Your history</h3><div class="lc lc-drawer" data-chart="${esc(mv.marker.id)}" data-variant="drawer"></div></div>` : ''}
-      ${pr ? `<div class="dr-sec"><h3>${ORD[pr.rank - 1]} priority</h3><div class="np-note"><p><b>${esc(pr.title)}.</b> ${esc(pr.plan)}</p><p class="by">${esc(NP_NAME)}</p></div></div>` : ''}
       <div class="dr-sec"><h3>What it is</h3><p>${esc(mv.marker.copy.about)}</p></div>
       <div class="dr-sec"><h3>Ranges</h3><table class="rtab"><tbody>${rows}</tbody></table></div>
       <div class="dr-sec"><h3>From the lab</h3><p class="sm">Blood drawn ${esc(COLLECTED)} at ${esc(V.report.labName)}. Optimal is our clinic's longevity target; in range follows the lab's reference interval.</p></div>
@@ -1366,28 +1393,6 @@ function listSheet() {
       <div class="dr-sec"><h3>How to read the scan</h3><ul class="sc-leg">${STATE_ORDER.map(k => `<li><i class="sc-lg sc-lg-${k}" aria-hidden="true"></i><b>${esc(STATE_LABEL[k])}</b><span>${esc(STATE_DEFINITION[k])}</span></li>`).join('')}</ul>
         <p class="sm">Grouped by the system each marker relates to; every result comes from blood or urine. Positions are approximate.</p></div>
     </div>`;
-  showDrawer();
-}
-
-/* A priority, opened from the scan's B state. The words are the page's own. */
-function prioSheet(i) {
-  const pr = VER.priorities[i]; if (!pr) return;
-  const mv = BY_ID[pr.biomarkerIds[0]], dp = distParts(mv);
-  drawer.innerHTML = `<div class="dr-head" id="drHead">
-      <span class="dr-grab" aria-hidden="true"></span>
-      <div class="dr-bar"><div class="dr-lab"><p class="eyebrow">${esc(ORD[i])} priority</p><p class="dr-mini" aria-hidden="true"><b>${esc(pr.title)}</b></p></div>
-      <button type="button" class="x" id="drClose" aria-label="Close">${ICON.x}</button></div>
-    </div>
-    <div class="dr-in">
-      <h2 id="drTitle">${esc(pr.title)}</h2>
-      <div class="dr-val"><span class="v num">${esc(valText(mv, mv.latest))}</span>${unitOf(mv) ? `<span class="u">${esc(unitOf(mv))}</span>` : ''}${stateTag(mv.latest.state)}</div>
-      <div class="dr-rb">${rangeBar(mv, { ticks: true, zones: true, prev: true })}<p class="sr">${esc(railSentence(mv, true))}</p></div>
-      ${dp ? `<div class="readout"><span class="rd-l">To reach target</span><span class="rd-v s-${mv.latest.state}"><b class="num">${esc(dp.n)}</b> ${esc(dp.u)} ${dp.dir}</span></div>` : ''}
-      <div class="dr-sec"><h3>Why it matters</h3><p>${esc(pr.body)}</p></div>
-      <div class="dr-sec"><h3>What we'll do</h3><div class="np-note"><p>${esc(pr.plan)}</p><p class="by">${esc(NP_NAME)}</p></div></div>
-      <div class="dr-sec"><h3>The markers</h3><div class="bm-more">${pr.biomarkerIds.map(id => BY_ID[id]).filter(Boolean).map(m => `<button type="button" class="bm-mk" data-open-marker="${esc(m.marker.id)}"><span class="nm">${esc(m.marker.name)}</span><span class="v num">${esc(valText(m, m.latest))}${unitOf(m) ? `<small>${esc(unitOf(m))}</small>` : ''}</span>${stateTag(m.latest.state)}</button>`).join('')}</div></div>
-    </div>
-    <div class="dr-foot"><a class="btn primary block" href="#priorities" data-close-drawer>See all ${esc(spell(nP).toLowerCase())} priorities ${ICON.arrow}</a></div>`;
   showDrawer();
 }
 
@@ -1584,7 +1589,7 @@ slides.push(`<div class="slide r-big" data-builds="2">${WMK}<div class="stage r-
     <h2 ${rise(1, 'r-h')}><span class="num">${S.healthy}</span> of <span class="num">${S.total}</span> in a <em>healthy range</em></h2>
     <div ${rise(2, 'r-counts r-c2')}>${STATE_ORDER.map(s => `<div><div class="n num" style="color:${HUE_DARK[s]}">${S.byState[s]}</div><div class="l"><i class="r-dot" style="background:${HUE_DARK_MARK[s]}"></i>${esc(STATE_LABEL[s])}</div></div>`).join('')}</div>
     <p ${rise(3, 'r-note')}>Each dot is one marker, in the ring for its state. The faint trails show where markers that moved sat in ${esc(PREV_YEAR)}.</p>
-    <ul ${rise(4, 'r-key2')}><li><i class="k-hol"></i>Hollow: no clinic target</li>${CARRIED.length ? `<li><i class="k-once"></i>Dashed ring: measured once (${CARRIED.map(m => `${esc(m.marker.name)}, ${esc(formatYear(m.latest.examDate))}`).join('; ')})</li>` : ''}<li><i class="k-pn">1</i>Italic 1–${nP}: your priorities</li></ul>
+    <ul ${rise(4, 'r-key2')}><li><i class="k-hol"></i>Hollow: no clinic target</li>${CARRIED.length ? `<li><i class="k-once"></i>Dashed ring: measured once (${CARRIED.map(m => `${esc(m.marker.name)}, ${esc(formatYear(m.latest.examDate))}`).join('; ')})</li>` : ''}</ul>
   </div>
   <div class="r-bp-r"><div class="r-bx" id="rBx"></div></div></div></div>`);
 slides.push(`<div class="slide r-body r-scanned" data-builds="1">${WMK}<div class="stage r-bd">
@@ -1595,18 +1600,16 @@ slides.push(`<div class="slide r-body r-scanned" data-builds="1">${WMK}<div clas
     <p ${rise(3, 'r-note')}>${spell(SYSTEMS.length)} systems, each marked by the result that needs the most attention.</p>
   </div>
   </div></div></div>`);
-VER.priorities.forEach((p, i) => {
-  const mv = BY_ID[p.biomarkerIds[0]];
+ATTENTION.forEach((mv, i) => {
   slides.push(`<div class="slide r-pslide" data-builds="2">${WMK}<div class="stage r-prio">
-    <p ${rise(0, 'eyebrow r-eb')}><span class="r-pn">${i + 1}</span>${ORD[i]} priority · ${esc(SYSTEM_LABEL[mv.marker.system])}</p>
-    <h2 ${rise(1, 'r-t')}>${esc(p.title)}</h2>
+    <p ${rise(0, 'eyebrow r-eb')}><span class="r-pn" style="background:${HUE_DARK_MARK[mv.latest.state]}"></span>${esc(SYSTEM_LABEL[mv.marker.system])}</p>
+    <h2 ${rise(1, 'r-t')}>${esc(mv.marker.name)}</h2>
     <div class="r-l">
       <p ${rise(2, 'r-today')}>Today</p>
       <div ${rise(3, 'r-val')}><span class="v num">${esc(valText(mv, mv.latest))}</span><span class="u">${esc(unitOf(mv))}</span></div>
       <div ${rise(4, 'r-rb')}>${rangeBar(mv, { size: 'tv', ticks: true, zones: true, prev: true, glide: true, dark: true })}</div>
-      <p ${rise(5, 'r-st', 'color:' + HUE_DARK[mv.latest.state])}><span class="dot" style="background:${HUE_DARK[mv.latest.state]}"></span>${esc(STATE_LABEL[mv.latest.state])}</p>
-      <div ${rise(6, 'plan')} data-b="2"><span>What we'll do</span>${esc(p.plan)}</div>
-      ${p.biomarkerIds.slice(1).map(id => BY_ID[id]).filter(Boolean).map(a => `<p ${rise(7, 'r-also')} data-b="2"><span class="dot" style="background:${HUE_DARK_MARK[a.latest.state]}"></span><b>${esc(a.marker.name)}</b> <span class="num">${esc(valText(a, a.latest))} ${esc(unitOf(a))}</span> · <span style="color:${HUE_DARK[a.latest.state]}">${esc(STATE_LABEL[a.latest.state])}</span>${a.carriedForward ? ` · measured once, in ${esc(formatYear(a.latest.examDate))}` : ''}</p>`).join('')}</div>
+      <p ${rise(5, 'r-st', 'color:' + HUE_DARK[mv.latest.state])}><span class="dot" style="background:${HUE_DARK[mv.latest.state]}"></span>${esc(STATE_LABEL[mv.latest.state])}${distParts(mv) ? ' · ' + esc(distLine(mv)) : ''}</p>
+      ${sinceLine(mv) ? `<div ${rise(6, 'plan')} data-b="2"><span>${esc(trendWord(mv))}</span>${esc(sinceLine(mv))}</div>` : ''}</div>
     <div ${rise(3, 'r-c')} data-b="1">${!isOrd(mv) && mv.points.length > 1 ? `<div class="lc lc-tv" data-chart="${esc(mv.marker.id)}" data-variant="tv"></div>` : ''}</div></div></div>`);
 });
 /* Plan: a twelve-month timeline spaced by real dates. */

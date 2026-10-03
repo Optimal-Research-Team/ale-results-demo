@@ -830,6 +830,7 @@ html.motion .mr.in{clip-path:inset(-16% -8% -26% -8%);transform:none;transition:
 .chap-n{font:italic 400 17px/1 var(--serif);letter-spacing:-.01em;text-transform:none;color:var(--forest)}
 .chap-n::after{content:"";display:inline-block;width:18px;height:1px;margin:0 0 4px 12px;vertical-align:middle;background:rgba(44,78,37,.4)}
 .s-note .chap{margin-bottom:clamp(24px,calc(5 * var(--vw)),64px)}
+.s-prios .chap{margin-bottom:clamp(20px,calc(3 * var(--vw)),40px)}
 
 /* shared animated disclosure */
 .clip{display:grid;grid-template-rows:1fr;transition:grid-template-rows .38s var(--ease)}
@@ -897,6 +898,12 @@ html.motion .mr.in{clip-path:inset(-16% -8% -26% -8%);transform:none;transition:
 .p-num{grid-area:num;align-self:center;font:italic 400 48px/1 var(--serif);letter-spacing:-.02em;color:var(--forest-deep);padding-bottom:2px}
 .p-meta{grid-area:meta;align-self:end;font-size:13px;line-height:1.4;letter-spacing:0;color:var(--ink-muted)}
 .p-title{grid-area:title;align-self:start;margin-top:4px;font:var(--d3);letter-spacing:-.02em;color:var(--forest)}
+/* the card now leads with a marker, so the long name sits under it rather than
+   running on, and the rank numeral becomes a state pip - there is no ranking
+   to show, only how far out of range the result is */
+.p-title small{display:block;margin-top:5px;font:400 14px/1.35 var(--sans);letter-spacing:0;color:var(--ink-muted)}
+.p-pip{display:block;width:13px;height:13px;border-radius:50%;box-shadow:0 0 0 4px var(--cream)}
+.prio[data-open="true"] .p-pip{width:15px;height:15px}
 .prio-head .chev-w{grid-area:chev;justify-self:end}
 .p-dist,.pk-u,.pr-a,.p-plan{display:none}
 .prio-peek{grid-area:peek;display:none;align-items:center;gap:12px;margin-left:24px;font-size:15px;font-weight:600;color:var(--ink-strong)}
@@ -2038,6 +2045,7 @@ html.motion .slide.in .lp,html.motion .slide.in .gap{opacity:1;transition:opacit
   .p-num{grid-area:num;font-size:30px;line-height:1;align-self:start;padding-top:2px}
   .p-meta{grid-area:meta;font-size:13px}
   .p-title{grid-area:title;font-family:var(--serif);font-size:21px;line-height:1.16;letter-spacing:-.012em;margin-top:2px}
+  .p-title small{display:none} /* the long name is in the sheet; six cards need the height more */
   .prio-head .chev-w{grid-area:chev;align-self:start;margin-top:2px}
   .prio[data-open] .prio-peek{display:flex;flex-wrap:wrap;align-items:baseline;margin:12px 0 0;gap:6px 10px;animation:none}
   .prio-peek > .num{font-family:var(--serif);font-size:26px;font-weight:400;letter-spacing:-.02em}

@@ -77,7 +77,6 @@ SYS_SUBS.push(id => focusSystem(id, 'ledger'));
 /* ==========================================================================
    SIGNATURE 3 · Your longevity target
    ========================================================================== */
-const PRIO_RANK = Object.fromEntries(VER.priorities.map(p => [p.biomarkerIds[0], p.rank]));
 const BX_SYS = SYSTEMS.map(s => ({ id: s.system, label: s.label }));
 const BX_MARKERS = MARKERS.map(mv => {
   const m = mv.marker, ord = isOrd(mv), L = mv.latest, Pv = mv.previous, g = goalOf(mv), u = unitOf(mv);
@@ -91,7 +90,7 @@ const BX_MARKERS = MARKERS.map(mv => {
     id: m.id, name: m.name, system: m.system, systemLabel: SYSTEM_LABEL[m.system], state: L.state,
     // no clinic target: one fixed lane mid-ring (depth would otherwise read as "nearly optimal")
     closeness: L.state === 'in_range' && !hasTarget ? 0.5 : bullseyeCloseness(mv.bands, L.value, ord), valueText: valText(mv, L), unit: u,
-    hollow: L.state === 'in_range' && !hasTarget, once: m.oncePerLifetime, priority: PRIO_RANK[m.id] || null, note,
+    hollow: L.state === 'in_range' && !hasTarget, once: m.oncePerLifetime, priority: null, note,
     prev: Pv ? { state: Pv.state, closeness: Pv.state === 'in_range' && !hasTarget ? 0.5 : bullseyeCloseness(mv.bands, Pv.value, ord) } : null,
   };
 });
@@ -354,11 +353,11 @@ near(vsSec, vsMount, '150% 0px');
 /* ==========================================================================
    SIGNATURE 1 · The Living Scan
    The hero is a pinned track: the figure builds under a laser on arrival, and
-   scrolling dollies the camera onto priority 1 and hands off to #priorities.
+   scrolling dollies the camera onto the furthest result and hands off to #attention.
    It also absorbed v6's body map, so its reticles are the system controls.
    ========================================================================== */
 const scanSec = $('#scan'), scanTrack = $('.scan-track'), scanFrame = $('.scan-frame'), scanCopy = $('.scan-copy'), scanStage = $('#scanStage');
-const P1 = VER.priorities[0], P1_MV = BY_ID[P1.biomarkerIds[0]], P1_SYS = P1_MV.marker.system;
+const P1_MV = ATTENTION[0], P1_SYS = P1_MV ? P1_MV.marker.system : SYSTEMS[0].system;
 const scanQuality = () => (MQ.phone.matches ? 'phone' : docEl.classList.contains('tv') ? 'tv' : 'desktop');
 /* ?hero=bay switches the hero to the Systems Bay treatment: a character-screen
    read with slot cards, a radar field and heavier chrome. */
@@ -393,8 +392,8 @@ const SCAN_SYSTEMS = SYSTEMS.map(s => {
 });
 /* The 39 markers themselves: the subject of the scan. The figure is the volume
    they sit in, nothing more. */
-const SCAN_MARKERS = MARKERS.map(m => ({ id: m.marker.id, system: m.marker.system, state: m.latest.state, priority: PRIO_RANK[m.marker.id] || 0 }));
-const SCAN_PRIOS = Object.fromEntries(VER.priorities.map(p => [BY_ID[p.biomarkerIds[0]].marker.system, p.rank]));
+const SCAN_MARKERS = MARKERS.map(m => ({ id: m.marker.id, system: m.marker.system, state: m.latest.state, priority: 0 }));
+const SCAN_PRIOS = Object.fromEntries(ATTENTION.slice(0, 3).map((mv, i) => [mv.marker.system, i + 1]));
 const SCAN_HUD = {
   tl: `Scan ${YEAR} · ${S.total} markers · ${SYSTEMS.length} systems`,
   tr: `${V.report.labName} · ${shortMonthDay(V.report.collectedAt.slice(0, 10))}`,
@@ -781,7 +780,7 @@ function mountRingsHero() {
 function mountScanHero() {
   scan = mountScan(scanStage, {
     systems: SCAN_SYSTEMS, markers: SCAN_MARKERS, priorities: SCAN_PRIOS, sex: V.patient.sex,
-    lockId: P1_SYS, lockLabel: `Priority ${P1.rank} · ${P1_MV.marker.name}`,
+    lockId: P1_SYS, lockLabel: P1_MV ? `Furthest from target · ${P1_MV.marker.name}` : '',
     mode: 'page', quality: scanQuality(), frame: scanFrameSpec, hud: SCAN_HUD, tags: 'split',
     vessels: HERO_BAY, cards: HERO_BAY, look: HERO_LINE ? 'line' : null,
     reducedMotion: !MOTION, threeReady: loadThree(), forceFallback: !GL_OK,
@@ -839,7 +838,7 @@ function presentStops() {
   const span = tr.height - scanFrame.offsetHeight * zoomK();
   const stops = [{ y: top, name: 'hero-a' }, { y: top + span * 0.9, name: 'hero-b' }];
   const at = (sel, name) => { const el = $(sel); if (el) stops.push({ y: el.getBoundingClientRect().top + scrollY - 8, name }); };
-  at('#priorities', 'priorities'); at('#plan', 'plan'); at('#note', 'note');
+  at('#attention', 'attention'); at('#plan', 'plan'); at('#note', 'note');
   at('#target', 'target'); at('#progress', 'progress');
   const vs = $('.vs-pin');
   if (vs) { const b = vs.getBoundingClientRect(), y0 = b.top + scrollY, h = b.height - innerHeight;
@@ -905,7 +904,6 @@ document.addEventListener('click', e => {
   if (e.target.closest('#room')) return;
   const go = e.target.closest('[data-bm-go]'); if (go) { closeDrawer(); showInResults(go.dataset.bmGo); return; }
   if (e.target.closest('[data-sys-list]')) { openDrawer({ context: 'list' }); return; }
-  const ps = e.target.closest('[data-prio-sheet]'); if (ps) { openDrawer({ context: 'priority', i: +ps.dataset.prioSheet }); return; }
   if (e.target.closest('[data-close-drawer]')) { closeDrawer(); return; }
   const bm = e.target.closest('[data-bm]'); if (bm) { focusSystem(focusSys === bm.dataset.bm ? null : bm.dataset.bm, 'list'); return; }
   if (e.target.closest('[data-bm-clear]')) { focusSystem(null, 'list'); return; }
@@ -925,7 +923,7 @@ function deckScan(sl) {
     : { composition: 'side', crown: 0.07, sole: 0.92, figX: 0.62, plateX: 0.54, bx: 0.52, spanB: 0.30, safeL: 40, safeR: 40, hudBottom: 44, copyTop: H * 0.5, restYaw: 18, lockYaw: 30 };
   if (!rScan) {
     rScan = mountScan($('#rScan'), {
-      systems: SCAN_SYSTEMS, priorities: SCAN_PRIOS, sex: V.patient.sex, lockId: P1_SYS, lockLabel: `Priority ${P1.rank} · ${P1_MV.marker.name}`,
+      systems: SCAN_SYSTEMS, priorities: SCAN_PRIOS, sex: V.patient.sex, lockId: P1_SYS, lockLabel: P1_MV ? `Furthest from target · ${P1_MV.marker.name}` : '',
       mode: 'deck', quality: 'tv', tags: welcome ? 'none' : 'plate', tagScale: 1.25, artScale: () => roomScale(),
       frame: (W, H) => deckFrame(W, H), hud: { honesty: SCAN_HUD.honesty },
       reducedMotion: !MOTION, threeReady: loadThree(), forceFallback: !GL_OK, timeScale: 1.25,
