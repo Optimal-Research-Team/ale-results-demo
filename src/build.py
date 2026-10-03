@@ -21,17 +21,21 @@ def lattice():
     # JSON rather than a data URI so the module can decode it synchronously.
     raw = (here / 'assets/scan-lattice.json').read_text().strip()
     return 'const SCAN_LATTICE = ' + raw + ';'
+MIME = {'.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg'}
 def plates():
+    # webp wins where both exist: a hatched engraving costs about a fifth
     out = {}
-    for f in sorted((here).glob('plate-*.png')):
-        out[f.stem.replace('plate-', '')] = uri(f.name, 'image/png')
+    for f in sorted(here.glob('plate-*.*')):
+        if f.suffix not in MIME:
+            continue
+        k = f.stem.replace('plate-', '')
+        if k in out and f.suffix != '.webp':
+            continue
+        out[k] = uri(f.name, MIME[f.suffix])
     return out
 def wood():
     # a photograph when one is supplied, else the drawn section stands
-    for n, m in (('wood.jpg', 'image/jpeg'), ('wood.png', 'image/png')):
-        if (here / n).exists():
-            return uri(n, m)
-    return ''
+    return opt_img(('wood.webp', 'image/webp'), ('wood.jpg', 'image/jpeg'), ('wood.png', 'image/png'))
 def opt_img(*names):
     for n, m in names:
         if (here / n).exists():
@@ -43,12 +47,13 @@ def treeline():
         if (here / n).exists():
             return uri(n, m)
     return ''
-imgs = {'{{HERO}}': uri('hero.jpg', 'image/jpeg'), '{{CANOPY}}': uri('canopy.jpg', 'image/jpeg'),
+imgs = {'{{HERO}}': opt_img(('hero.webp', 'image/webp'), ('hero.jpg', 'image/jpeg')),
+        '{{CANOPY}}': opt_img(('canopy.webp', 'image/webp'), ('canopy.jpg', 'image/jpeg')),
         '{{WM_GREEN}}': uri('wm-green.png', 'image/png'), '{{WM_WHITE}}': uri('wm-white.png', 'image/png'),
         '{{WM_INV}}': uri('wm-inv.png', 'image/png')}
 src = (here / 'src.html').read_text()
 import json as _json
-parts = {'{{PLATES}}': 'const PLATES = ' + _json.dumps(plates()) + ';\nconst WOOD_URI = ' + _json.dumps(wood()) + ';\nconst TREELINE_URI = ' + _json.dumps(treeline()) + ';\nconst RING_URI = ' + _json.dumps(opt_img(('ring-round.webp','image/webp'),('ring-round.png','image/png'))) + ';\nconst CLOSE_URI = ' + _json.dumps(opt_img(('close-engraving.webp','image/webp'),('close-engraving.png','image/png'))) + ';\nconst SPRIG_URI = ' + _json.dumps(opt_img(('sprig.png','image/png'),('sprig.webp','image/webp'))) + ';',
+parts = {'{{PLATES}}': 'const PLATES = ' + _json.dumps(plates()) + ';\nconst WOOD_URI = ' + _json.dumps(wood()) + ';\nconst TREELINE_URI = ' + _json.dumps(treeline()) + ';\nconst RING_URI = ' + _json.dumps(opt_img(('ring-round.webp','image/webp'),('ring-round.png','image/png'))) + ';\nconst CLOSE_URI = ' + _json.dumps(opt_img(('close-engraving.webp','image/webp'),('close-engraving.png','image/png'))) + ';\nconst SPRIG_URI = ' + _json.dumps(opt_img(('sprig.webp','image/webp'),('sprig.png','image/png'))) + ';',
          '{{CONSTS}}': js('consts.js'), '{{DATA}}': js('data.js'), '{{MODEL}}': js('model.js'), '{{LATTICE}}': lattice(),
          '{{MODULES}}': '\n'.join(js(m) for m in MODULES), '{{VIEW}}': js('view.js'), '{{SIG}}': js('sig.js')}
 for k, v in parts.items():
