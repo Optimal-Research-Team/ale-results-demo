@@ -62,6 +62,8 @@ out = args[0] if args else str(here / 'out.html')
 # the artifact host supplies its own document shell; a file served anywhere
 # else - local preview, GitHub Pages - needs a real one
 if out.endswith('preview.html') or '--standalone' in flags:
-    src = '<!doctype html><html lang="en-CA"><head><meta charset="utf-8">' + src + '</html>'
+    # a served page is asked for a favicon; an inline mark answers it without a request
+    ICON = '<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2032%2032%22%3E%3Crect%20width=%2232%22%20height=%2232%22%20rx=%227%22%20fill=%22%232C4E25%22/%3E%3Ccircle%20cx=%2216%22%20cy=%2216%22%20r=%2210.5%22%20fill=%22none%22%20stroke=%22%23FFFCF7%22%20stroke-opacity=%22.45%22%20stroke-width=%221.6%22/%3E%3Ccircle%20cx=%2216%22%20cy=%2216%22%20r=%226%22%20fill=%22none%22%20stroke=%22%23FFFCF7%22%20stroke-opacity=%22.7%22%20stroke-width=%221.6%22/%3E%3Ccircle%20cx=%2216%22%20cy=%2216%22%20r=%222.4%22%20fill=%22%23A4C29D%22/%3E%3C/svg%3E">'
+    src = '<!doctype html><html lang="en-CA"><head><meta charset="utf-8">' + ICON + src + '</html>'
 pathlib.Path(out).write_text(src)
 print(out, len(src))
