@@ -787,7 +787,7 @@ section{scroll-margin-top:64px}
 @media (max-width:900px){.mv-round{width:420px;transform:translate(42%,-50%);opacity:.085}}
 @media print{.mv-round{display:none}.s-moved{overflow:visible!important;position:static!important;isolation:auto!important}}
 
-.s-ledger{padding:calc(var(--sec) - 16px) 0 var(--sec);background:var(--bone-2);border-block:1px solid var(--hair);--rb-ring:var(--bone-2);--rb-base:rgba(118,115,109,.34);--ink-muted:#6A6761}
+.s-ledger{padding:calc(var(--sec) - 16px) 0 var(--sec);background:var(--cream);border-block:1px solid var(--hair);--rb-ring:var(--cream);--rb-base:rgba(118,115,109,.3)}
 .s-plan{padding:var(--sec) 0}
 .s-sign{padding:40px 0 calc(var(--sec) * .8)}
 .head .eyebrow + h2,.head .eyebrow + .d2{margin-top:16px}
@@ -822,7 +822,7 @@ html.motion .mr.in{clip-path:inset(-16% -8% -26% -8%);transform:none;transition:
 .letter .p2{margin-top:24px;font-size:17px;line-height:1.62;color:var(--ink-soft);max-width:58ch}
 .sign{display:flex;align-items:center;gap:12px;margin-top:28px;font-size:13px;line-height:1.4;color:var(--ink-muted);letter-spacing:0}
 /* a colophon finishes the signature line, the way a printed plate carries one */
-.colophon{flex:none;width:76px;height:auto;margin-left:auto;opacity:.38}
+.colophon{flex:none;width:76px;height:auto;margin-left:auto;align-self:center;opacity:.34}
 @media (max-width:640px){.colophon{width:58px}}
 @media print{.colophon{display:none}}
 .sign b{display:block;font-size:15px;font-weight:500;color:var(--ink-strong);letter-spacing:-.008em}
@@ -977,6 +977,8 @@ html.motion .prio[data-open="true"] .prio-grid > *:nth-child(2){animation-delay:
 .rb .z.e0{border-radius:3px 0 0 3px;box-shadow:inset -1.5px 0 0 var(--rb-ring)}
 .rb .z.e1{border-radius:0 3px 3px 0;box-shadow:inset 1.5px 0 0 var(--rb-ring)}
 .rb .z.e0.e1{border-radius:3px;box-shadow:none}
+.rb .z.nr{background:rgba(118,115,109,.26)}
+.rb .z.nr.on{background:rgba(118,115,109,.38)}
 .z-borderline{background:rgba(201,123,45,.52)}
 .z-out_of_range{background:var(--hatch)}
 .rb .z.on{height:6px;margin-top:-3px}
@@ -1206,6 +1208,22 @@ html.motion .mv.in .lp{transform:none;opacity:1;transition:transform .45s cubic-
 .bm-mk .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bm-mk .v{font-weight:500;color:var(--cream);white-space:nowrap}
 .bm-mk .v small{margin-left:4px;font-size:12px;font-weight:400;color:rgba(255,252,247,.5)}
+/* the same list, on cream */
+.drawer .bm-list{background:var(--bone-2);box-shadow:inset 0 0 0 1px var(--hair)}
+.drawer .bm-row{border-bottom-color:var(--hair)}
+.drawer .bm-row::before{background:var(--forest)}
+.drawer .bm-row.on{background:rgba(44,78,37,.05)}
+.drawer .bm-nm{color:var(--ink-strong)}
+.drawer .bm-st{color:var(--ink-muted)}
+.drawer .bm-sub{color:var(--ink-muted)}
+.drawer .bm-mk{border-top-color:var(--hair);color:var(--ink-soft)}
+.drawer .bm-mk .v{color:var(--ink-strong)}
+.drawer .bm-mk .v small{color:var(--ink-muted)}
+.drawer .bm-g{box-shadow:0 0 0 3px var(--bone-2)}
+@media (hover:hover){
+  .drawer .bm-row:not(.on):hover{background:rgba(44,78,37,.04)}
+  .drawer .bm-btn:hover .bm-nm,.drawer .bm-mk:hover .nm{color:var(--forest)}
+}
 .bm-mk .state,.bm-mk .chip{justify-self:start}
 .bm-go{height:42px;margin-top:12px;padding:0 20px;font-size:14px}
 .btn.ghost{background:transparent;color:var(--cream);box-shadow:inset 0 0 0 1px rgba(255,252,247,.36)}
@@ -5743,15 +5761,33 @@ function rangeBar(mv, { size = 'md', ticks = false, prev = false, target = false
     return `<div class="rb ord ${size}" data-lay aria-hidden="true"><div class="rb-track"><div class="rb-steps">${segs}</div><span class="mk" style="left:${(((cur + 0.5) / st.length) * 100).toFixed(2)}%;background:${col(mv.latest.state)}"></span></div>${labs}</div>`;
   }
   const [a, b] = mv.bands.domain, bl = bandList(mv.bands), g = goalBand(mv.bands), p = mv.marker.precision;
-  const P = v => clamp((v - a) / (b - a), 0, 1) * 100, f2 = x => x.toFixed(2);
+  /* A banded scale, not a linear one. Mapping value linearly across the domain
+     made every band as wide as its numeric span, so no two markers' bars could
+     be compared - one marker's "optimal" was a sliver, another's half the rail.
+     Each band now owns an equal share of the width and the value sits
+     proportionally inside its own band. Position along the bar therefore reads
+     as "which band, and how far through it", not as a distance in mmol/L; the
+     exact gap is stated in words beside it, where it belongs. */
+  const nb = bl.length;
+  const P = v => {
+    if (!nb) return 0;
+    let i = bl.findIndex(x => inBand(x, v));
+    if (i < 0) i = v < bl[0].lo ? 0 : nb - 1;
+    const x = bl[i];
+    const lo = Math.max(x.lo, a), hi = Math.min(x.hi === Infinity ? b : x.hi, b);
+    const span = hi - lo;
+    const t = span > 0 ? clamp((v - lo) / span, 0, 1) : 0.5;
+    return ((i + t) / nb) * 100;
+  };
+  const f2 = x => x.toFixed(2);
   const zoneOf = v => bl.find(x => inBand(x, v)) || (v < a ? bl[0] : bl[bl.length - 1]);
   const zAttr = x => `data-zl="${f2(P(x.lo))}" data-zr="${f2(P(x.hi))}"`;
   const v = mv.latest.value, cz = zoneOf(v);
   let z = '';
   bl.forEach(x => {
     const l = P(x.lo), w = P(x.hi) - l, isG = sameBand(x, g);
-    const cls = isG ? (isTarget(g) ? 'tg' : 'lab') : needs(x.state) ? 'z-' + x.state : '';
-    if (cls) z += `<span class="z ${cls}${l <= 0.01 ? ' e0' : ''}${l + w >= 99.99 ? ' e1' : ''}${x === cz ? ' on' : ''}" style="left:${f2(l)}%;width:${f2(w)}%"></span>`;
+    const cls = isG ? (isTarget(g) ? 'tg' : 'lab') : needs(x.state) ? 'z-' + x.state : 'nr';
+    z += `<span class="z ${cls}${l <= 0.01 ? ' e0' : ''}${l + w >= 99.99 ? ' e1' : ''}${x === cz ? ' on' : ''}" style="left:${f2(l)}%;width:${f2(w)}%"></span>`;
   });
   const cp = P(v);
   let pv = '', pvl = '', from = null;
@@ -5952,7 +5988,6 @@ function spark(mv) {
 /* ---------- data for the page ---------- */
 const V = VIEW, S = V.summary, VER = V.version;
 const attention = S.byState.borderline + S.byState.out_of_range;
-const paras = VER.summary.split(/\n\s*\n/).map(t => t.trim()).filter(Boolean);
 const wins = MARKERS.filter(m => m.trend === 'improved' && !isOrd(m) && m.previous)
   .map(m => ({ m, first: firstPt(m) }))
   .sort((a, b) => Math.abs((b.m.latest.value - b.first.value) / b.first.value) - Math.abs((a.m.latest.value - a.first.value) / a.first.value))
@@ -6038,16 +6073,11 @@ const plateImg = (id, cls = '') => {
    prints, and the accessible summary that stands in for the figure. The scan
    absorbs v6's "system by system" section, so the reticles are the body map. */
 const shortMonthDay = iso => { const [, m, d] = ymd(iso); return `${MONTHS[m - 1].slice(0, 3)} ${d}`; };
-const NEXT_VISIT = VER.nextSteps.find(n => n.due === VER.retestDate) || null;
 /* italicise one noun inside a frozen clinical title: styling only, never a rewrite */
 const emNoun = (text, noun) => { const i = noun ? text.indexOf(noun) : -1; return i < 0 ? esc(text) : `${esc(text.slice(0, i))}<em>${esc(noun)}</em>${esc(text.slice(i + noun.length))}`; };
 const SCAN_SUMMARY = `Body map: ${SYSTEMS.length} systems. ` + (attnSystems.length
   ? `${spell(attnSystems.length)} need${attnSystems.length === 1 ? 's' : ''} attention: ${attnSystems.map(s => `${s.label}, ${sysStatus(s)}`).join('; ')}.`
   : 'Nothing needs attention.');
-function nextVisit() {
-  if (!NEXT_VISIT) return '';
-  return `<a class="sc-next" href="#plan"><span class="sc-nk">Next</span><span class="sep"> · </span><span class="num">${esc(shortMonthDay(NEXT_VISIT.due))}</span><span class="sep"> · </span><span class="sc-nt">${esc(NEXT_VISIT.title)}</span>${ICON.arrow}</a>`;
-}
 /* ==========================================================================
    ?hero=rings - The Section. A cross-cut of trunk: every growth ring is a
    year, so the hero is the patient's record of time rather than a picture of
@@ -6096,9 +6126,8 @@ function targetHero() {
     <div class="scan-copy" data-state="A">
       <div class="sc-cA">
         <p class="eyebrow">${esc(PRODUCT_NAME)} · ${esc(YEAR)}</p>
-        <h1 id="thH">${esc(VER.headline)}${VER.headlineEmphasis ? ` <em>${esc(VER.headlineEmphasis)}</em>` : ''}</h1>
+        <h1 id="thH">${esc(S.total)} markers, <em>one picture</em></h1>
         <div class="byline"><span class="avatar" aria-hidden="true">${esc(V.clinician.initials)}</span><span>Reviewed by <b>${esc(NP_NAME)}</b><br><span class="num">${esc(PUBLISHED)}</span></span></div>
-        ${nextVisit()}
       </div>
       ${mv1 ? `<div class="sc-cB" aria-hidden="true">
         <p class="eyebrow">Furthest from ${esc(goalNoun(mv1))} · ${esc(SYSTEM_LABEL[mv1.marker.system])}</p>
@@ -6178,11 +6207,10 @@ function ringsHero() {
       <div class="sc-cA">
         <p class="sc-pill">${stats.map(([n, l]) => `<span class="nw"><b class="num">${n}</b> ${esc(l)}</span>`).join('<span class="sep"> · </span>')}</p>
         <p class="eyebrow">${esc(PRODUCT_NAME)} · ${esc(YEAR)}</p>
-        <h1 id="rgH">${esc(VER.headline)}${VER.headlineEmphasis ? ` <em>${esc(VER.headlineEmphasis)}</em>` : ''}</h1>
+        <h1 id="rgH">${esc(S.total)} markers, <em>one picture</em></h1>
         <div class="byline"><span class="avatar" aria-hidden="true">${esc(V.clinician.initials)}</span><span>Reviewed by <b>${esc(NP_NAME)}</b><br><span class="num">${esc(PUBLISHED)}</span></span></div>
         <div class="capsule"><button type="button" data-toast="In the portal this opens Messages with ${esc(NP_FIRST)}.">Message ${esc(NP_FIRST)}</button><button type="button" class="solid" data-toast="In the portal this downloads your report as a PDF.">${ICON.dl}Download PDF</button></div>
         <nav class="sc-stats" aria-label="Your results at a glance">${[[S.healthy, 'markers in a healthy range', '#target', ''], [attention, 'markers to watch this year', '#results', ' data-watch'], [ATTENTION.length, 'results outside our target', '#attention', '']].map(([n, l, h, x]) => `<a href="${h}"${x}><b class="num" data-count="${n}">${n}</b><span>${esc(l)}</span></a>`).join('')}</nav>
-        ${nextVisit()}
       </div>
       <div class="sc-cB" aria-hidden="true">
         <p class="eyebrow">Furthest from ${esc(goalNoun(mv1))} · ${esc(SYSTEM_LABEL[mv1.marker.system])}</p>
@@ -6225,11 +6253,10 @@ function scanHero() {
       <div class="sc-cA">
         <p class="sc-pill">${stats.map(([n, l]) => `<span class="nw"><b class="num">${n}</b> ${esc(l)}</span>`).join('<span class="sep"> · </span>')}</p>
         <p class="eyebrow">${esc(PRODUCT_NAME)} · ${esc(YEAR)}</p>
-        <h1 id="scH">${esc(VER.headline)}${VER.headlineEmphasis ? ` <em>${esc(VER.headlineEmphasis)}</em>` : ''}</h1>
+        <h1 id="scH">${esc(S.total)} markers, <em>one picture</em></h1>
         <div class="byline"><span class="avatar" aria-hidden="true">${esc(V.clinician.initials)}</span><span>Reviewed by <b>${esc(NP_NAME)}</b><br><span class="num">${esc(PUBLISHED)}</span></span></div>
         <div class="capsule"><button type="button" data-toast="In the portal this opens Messages with ${esc(NP_FIRST)}.">Message ${esc(NP_FIRST)}</button><button type="button" class="solid" data-toast="In the portal this downloads your report as a PDF.">${ICON.dl}Download PDF</button></div>
         <nav class="sc-stats" aria-label="Your results at a glance">${stats.map(([n, , l, h, x]) => `<a href="${h}"${x}><b class="num" data-count="${n}">${n}</b><span>${esc(l)}</span></a>`).join('')}</nav>
-        ${nextVisit()}
       </div>
       <div class="sc-cB" aria-hidden="true">
         <p class="eyebrow">Your first priority · ${esc(sys1)}</p>
@@ -6251,10 +6278,9 @@ const HERO_Q = new URLSearchParams(location.search).get('hero') || 'target';
    so that entry would be a link to nothing and "Body" would name a body map
    this page no longer has. */
 const RAIL = (HERO_Q === 'target'
-  ? [['scan', 'Target'], ['attention', 'Attention'], ['plan', 'Plan'], ['note', 'Note'], ['progress', 'Progress'], ['samples', 'Samples'], ['results', 'Results']]
-  : [['scan', 'Body'], ['attention', 'Attention'], ['plan', 'Plan'], ['note', 'Note'], ['target', 'Target'], ['progress', 'Progress'], ['samples', 'Samples'], ['results', 'Results']]);
+  ? [['scan', 'Target'], ['attention', 'Attention'], ['progress', 'Progress'], ['samples', 'Samples'], ['results', 'Results']]
+  : [['scan', 'Body'], ['attention', 'Attention'], ['target', 'Target'], ['progress', 'Progress'], ['samples', 'Samples'], ['results', 'Results']]);
 /* chapter marks: the page reads as two halves, Maya's narrative then the patient's own exploring */
-const partTwo = () => `<div class="s-p2"><div class="wrap p2o"><p class="p2-k">Part two</p><p class="p2-h">Your year in <em>review</em></p></div></div>`;
 const chap = (n, t) => `<p class="chap"><span class="chap-n">${n}</span><span class="chap-t">${esc(t)}</span></p>`;
 function srail() {
   return `<nav class="srail" aria-label="Sections"><div class="srail-bar">
@@ -6264,14 +6290,6 @@ function srail() {
   </div></nav>`;
 }
 
-function note() {
-  return `<section id="note" class="s-note"><div class="wrap railgrid">
-    <div class="head nt-head"><p class="eyebrow">A note from your NP</p><h2 class="d2">What we see in your <em>results</em></h2></div>
-    <div class="letter"><span class="q" aria-hidden="true">“</span>${paras.map((p, i) => `<p class="${i ? 'p2' : 'lead'}">${esc(p)}</p>`).join('')}
-      <div class="sign"><span class="avatar" aria-hidden="true">${esc(V.clinician.initials)}</span><span><b>${esc(NP_NAME)}</b><span class="sg-r">Your nurse practitioner</span><span class="sg-p">Nurse practitioner<span class="sep"> · </span><span class="num">${esc(PUBLISHED)}</span></span></span>${SPRIG_URI ? '<img class="colophon" src="" alt="" aria-hidden="true">' : ''}</div>
-    </div>
-  </div></section>`;
-}
 
 /* SIGNATURE 3 · Your longevity target. The chart itself is mounted by sig.js
    (renderBullseye); this is its legend, controls and the list equivalent. */
@@ -6351,6 +6369,7 @@ const ATTENTION = MARKERS
     || STATE_RANK[a.latest.state] - STATE_RANK[b.latest.state]
     || (distFrac(b) - distFrac(a)));
 const ACTIONABLE = ATTENTION.filter(m => !frozen(m));
+const AT_TARGET = MARKERS.filter(m => m.latest.state === 'optimal');
 const FROZEN = ATTENTION.filter(frozen);
 
 function attentionSection() {
@@ -6362,7 +6381,6 @@ function attentionSection() {
       ? `<div class="att-sub"><p class="eyebrow">Measured once</p><p>${esc(spell(FROZEN.length))} ${FROZEN.length === 1 ? 'result is' : 'results are'} drawn once in a lifetime. ${FROZEN.length === 1 ? 'It stays' : 'They stay'} on the chart, but ${FROZEN.length === 1 ? 'it is not' : 'they are not'} something the plan moves.</p></div>`
       : '';
     const hist = mv.points.map((x, k) => `<span class="${k === mv.points.length - 1 ? 'cur' : ''}"><span class="yr">${esc(formatYear(x.examDate))}</span> ${esc(valText(mv, x))}</span>`).join('<span class="ar">→</span>');
-    const nc = nextCheckFor(mv);
     // six cards, not three: on a phone they all start closed so the section
     // reads as an index, the same rule the ledger's groups follow
     const open = i === 0 && !MQ.phone.matches;
@@ -6388,7 +6406,6 @@ function attentionSection() {
           ${fz ? `<div class="readout"><span class="rd-l">Measured</span><span class="rd-v">once, in <span class="num">${esc(formatYear(mv.latest.examDate))}</span></span></div>` : ''}
         </div>
         <div class="why"><div class="kicker">What it is</div><p>${esc(mv.marker.copy.about)}</p>
-          ${nc ? `<a class="p-when" href="#plan"><span class="pw-k">Next measured</span><span class="pw-d num">${esc(formatShortDate(nc.due))}</span><span class="pw-t">${esc(nc.title)}</span>${ICON.arrow}</a>` : ''}
           <button type="button" class="textlink" data-open-marker="${esc(mv.marker.id)}">See the full history ${ICON.arrow}</button>
         </div>
       </div></div></div>
@@ -6647,108 +6664,37 @@ function setGroup(box, open) {
   if (open) ui.open.add(box.dataset.sysg); else ui.open.delete(box.dataset.sysg);
 }
 
-/* The calendar file. The page already holds every date, title and detail, so
-   it is assembled from the same strings the plan shows - never a reworded
-   version. All-day events, because a draw date is a day, not a time. */
-function icsFor(steps) {
-  const stamp = new Date().toISOString().replace(/[-:]|\.\d{3}/g, '');
-  const day = iso => iso.replace(/-/g, '');
-  const nextDay = iso => { const [y, m, d] = ymd(iso); const t = new Date(Date.UTC(y, m - 1, d + 1)); 
-    return `${t.getUTCFullYear()}${pad2(t.getUTCMonth() + 1)}${pad2(t.getUTCDate())}`; };
-  // RFC 5545 wants CRLF, escaped separators, and lines folded at 75 octets
-  const esc5 = t => String(t).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
-  const fold = l => { const out = []; let r = l;
-    while (r.length > 73) { out.push(r.slice(0, 73)); r = ' ' + r.slice(73); } out.push(r); return out.join('\r\n'); };
-  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Optimal Health//Annual Longevity Assessment//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
-  steps.filter(s2 => s2.due).forEach((s2, i) => {
-    L.push('BEGIN:VEVENT',
-      `UID:ale-${YEAR}-${i}-${day(s2.due)}@beoptimal.ca`,
-      `DTSTAMP:${stamp}`,
-      `DTSTART;VALUE=DATE:${day(s2.due)}`,
-      `DTEND;VALUE=DATE:${nextDay(s2.due)}`,
-      fold(`SUMMARY:${esc5(s2.title)}`),
-      fold(`DESCRIPTION:${esc5(s2.detail)} — ${esc5(PRODUCT_NAME)} ${esc5(YEAR)}, ${esc5(CLINIC.name)}`),
-      fold(`LOCATION:${esc5(CLINIC.name)}\\, ${esc5(CLINIC.city)}`),
-      'BEGIN:VALARM', 'TRIGGER:-P2D', 'ACTION:DISPLAY', fold(`DESCRIPTION:${esc5(s2.title)}`), 'END:VALARM',
-      'END:VEVENT');
-  });
-  L.push('END:VCALENDAR');
-  return L.join('\r\n');
-}
 
 /* The sheet a patient actually keeps. Printed only, and only on page one:
    the chart, the three priorities and the dates, so the first page answers
    "what matters and when" without the other eleven. */
-/* Which visit next measures a priority. Inferred only from a verbatim match -
-   a step that names one of the priority's own markers in its title or detail -
-   so this never invents a schedule the plan does not already state. No match,
-   no line. */
-function nextCheckFor(mv) {
-  const n = mv.marker.name.toLowerCase();
-  return VER.nextSteps.filter(s2 => s2.due && s2.due >= TODAY)
-    .find(s2 => `${s2.title} ${s2.detail}`.toLowerCase().includes(n)) || null;
-}
 
 function printSummary() {
-  const dated = VER.nextSteps.filter(s2 => s2.due);
   const pr = ATTENTION.map(mv => {
     const d = distParts(mv);
     return `<li><span class="ps-n num"><i class="p-pip bg-${mv.latest.state}"></i></span><span class="ps-b"><b>${esc(mv.marker.name)} <span class="num">${esc(valText(mv, mv.latest))}</span>${unitOf(mv) ? ' <span class="ps-u">' + esc(unitOf(mv)) + '</span>' : ''}</b>
       <small>${esc(SYSTEM_LABEL[mv.marker.system])}${d ? ' · ' + esc(distLine(mv)) : ''}</small></span></li>`;
   }).join('');
-  const dt = dated.map(s2 => `<li><span class="ps-d num">${esc(formatShortDate(s2.due))}</span>
-    <span class="ps-b"><b>${esc(s2.title)}</b><small>${esc(s2.detail)}</small></span></li>`).join('');
   return `<section class="p-sum" aria-hidden="true">
     <div class="wrap"><div class="ps-grid">
-      <div><h2>${esc(spell(ATTENTION.length))} to work on</h2><ol class="ps-l">${pr}</ol></div>
-      <div><h2>Your dates</h2><ol class="ps-l ps-dates">${dt}</ol></div>
+      <div><h2>${esc(spell(ATTENTION.length))} outside range</h2><ol class="ps-l">${pr}</ol></div>
+      <div><h2>At target</h2><ol class="ps-l ps-dates">${AT_TARGET.slice(0, 8).map(mv => `<li><span class="ps-n num"><i class="p-pip bg-optimal"></i></span><span class="ps-b"><b>${esc(mv.marker.name)} <span class="num">${esc(valText(mv, mv.latest))}</span></b><small>${esc(SYSTEM_LABEL[mv.marker.system])}</small></span></li>`).join('')}</ol>${AT_TARGET.length > 8 ? `<p class="ps-more num">and ${AT_TARGET.length - 8} more</p>` : ''}</div>
     </div>
-    <p class="ps-f">${esc(CLINIC.name)} · ${esc(CLINIC.city)} · ${esc(CLINIC.phone)}<span class="sep"> · </span>Reviewed by ${esc(NP_NAME)}, ${esc(PUBLISHED)}</p></div>
+    <p class="ps-f">${esc(CLINIC.name)} · ${esc(CLINIC.city)} · ${esc(CLINIC.phone)}<span class="sep"> · </span>Blood drawn ${esc(COLLECTED)}</p></div>
   </section>`;
 }
 
-function planCard() {
-  const due = VER.retestDate, match = VER.nextSteps.find(s => s.due === due);
-  const [yy] = due ? ymd(due) : [];
-  const walked = s => !!s.due && s.due <= TODAY;
-  const steps = VER.nextSteps.map((s, i, arr) => {
-    const next = !!s.due && s.due === due, today = s.due === TODAY;
-    const segIn = i ? (walked(arr[i - 1]) ? 'solid' : 'dash') : '', segOut = i < arr.length - 1 ? (walked(s) ? 'solid' : 'dash') : '';
-    const m = next ? 'Next' : today ? 'Today' : s.due ? formatShortDate(s.due) : 'Ongoing';
-    return `<li class="${today ? 'today' : next ? 'next' : walked(s) ? 'done' : 'later'}">
-      <span class="st-rail${segIn ? ' in-' + segIn : ''}${segOut ? ' out-' + segOut : ''}" aria-hidden="true"><i class="st-node"></i></span>
-      <span class="st-t"><span class="st-m num">${esc(m)}</span><span class="st-h"><b>${esc(s.title)}</b>${next ? '<span class="tag-next">Next</span>' : ''}</span><small>${esc(s.detail)}</small>${next ? `<span class="st-big num">${esc(formatLongDate(s.due))}</span>` : ''}</span>
-      <span class="when num">${today ? 'Today' : s.due ? esc(formatMonthYear(s.due)) : 'Ongoing'}</span></li>`;
-  }).join('');
-  const btns = cls => `<div class="${cls}"><button type="button" class="btn primary" data-toast="In the portal this opens Messages with ${esc(NP_FIRST)}.">Message ${esc(NP_FIRST)}</button><button type="button" class="btn secondary" data-ics>${ICON.cal || ''}${canSaveFile() ? 'Add to calendar' : 'See your dates'}</button></div>`;
-  const cd = due ? countdown(due) : '';
-  const place = `${CLINIC.name}, ${CLINIC.city.split(',')[0]}`;
-  return `<section id="plan" class="s-plan"><div class="wrap"><div class="plan-card">
-    <div class="dark"><p class="eyebrow">The plan</p><h2 class="d2">Your next <em>twelve months</em></h2><ul class="steps">${steps}</ul>${btns('m-btns')}</div>
-    <div class="light"><p class="eyebrow">Next bloodwork</p><div class="date num">${due ? `${esc(monthDay(due))}<span>, ${yy}</span>` : 'To be booked'}</div>
-      ${cd ? `<span class="cd num">${esc(cd)}</span>` : ''}
-      ${match ? `<dl class="appt"><div><dt>Visit</dt><dd>${esc(match.title)}</dd></div><div><dt>Includes</dt><dd>${esc(match.detail)}</dd></div><div><dt>Where</dt><dd>${esc(place)}</dd></div></dl>` : '<p>Your NP will book it with you.</p>'}
-      ${btns('btns')}</div>
-  </div></div></section>`;
-}
 
 /* The page closes on a warm, confident moment: Maya's own last line from her note, one action. */
+/* The close: the engraved shore, the clinic, and the date the blood was drawn.
+   No quote - it was lifted from a note the page no longer carries. */
 function closing() {
-  /* v7: the quote is the sentence that credits the patient, verbatim from the
-     note. v6 repeated "We will go through the plan together at your visit",
-     which is odd to read on the TV during that visit. */
-  const CLOSE_Q = 'That is the result of the work you put in.';
-  const line = paras.some(t => t.includes(CLOSE_Q)) ? CLOSE_Q
-    : ((paras[paras.length - 1] || '').match(/[^.!?]+[.!?]\s*$/) || [''])[0].trim();
-  const EM_WORD = 'work'; // styling only
-  const due = VER.retestDate, month = due ? MONTHS[ymd(due)[1] - 1] : '';
-  const cta = due ? `Book your ${month} follow-up` : `Message ${NP_FIRST}`;
-  return `<section class="s-close" aria-label="Until your next visit">${CLOSE_URI
+  return `<section class="s-close" aria-label="Your assessment">${CLOSE_URI
     ? '<div class="close-shore" aria-hidden="true"></div>'
-    : `<div class="close-photo" style="background-image:url('${IMG.hero}')" aria-hidden="true">${loopVideo('canopy', 'loop-close')}</div>`}
-    <div class="wrap"><figure class="close-f"><blockquote class="close-q mr">${emNoun(line, line.includes(EM_WORD) ? EM_WORD : '')}</blockquote>
-      <figcaption class="close-by"><span class="avatar" aria-hidden="true">${esc(V.clinician.initials)}</span>${esc(NP_NAME)}, from her note</figcaption></figure>
-      <button type="button" class="pill-cta" data-toast="In the portal this opens booking.">${esc(cta)} ${ICON.arrow}</button></div></section>`;
+    : `<div class="close-photo" style="background-image:url('${IMG.hero}')" aria-hidden="true"></div>`}
+    <div class="wrap"><p class="eyebrow">${esc(PRODUCT_NAME)}</p>
+      <p class="close-q mr">${esc(S.total)} markers, drawn <em>${esc(COLLECTED)}</em></p>
+      <p class="close-by">${esc(CLINIC.name)} · ${esc(CLINIC.city)}</p></div></section>`;
 }
 function signoff() {
   return `<section id="signoff" class="s-sign" aria-label="About this report"><div class="wrap"><div class="so">
@@ -6756,13 +6702,14 @@ function signoff() {
     <div class="so-t"><p class="so-by">Reviewed by <b>${esc(NP_NAME)}</b><span class="so-d"><span class="so-sep"> · </span><span class="num">${esc(PUBLISHED)}</span></span></p>
       <p>Blood drawn <span class="num">${esc(COLLECTED)}</span> at ${esc(V.report.labName)}</p>
       <p class="so-fine">Optimal ranges are our clinic's longevity targets, reviewed by our nurse practitioners. Lab ranges come from ${esc(V.report.labName)}.</p></div>
+    ${SPRIG_URI ? '<img class="colophon" src="" alt="" aria-hidden="true">' : ''}
   </div></div></section>`;
 }
 
 /* One story order on every viewport: the scan hands off to the priorities, the
    plan answers "what do I do", and Part two is the patient's own exploring. */
-$('#app').innerHTML = (HERO_Q === 'target' ? targetHero() : HERO_Q === 'rings' ? ringsHero() : scanHero()) + printSummary() + srail() + attentionSection() + planCard() + partTwo()
-  + note() + (HERO_Q === 'target' ? '' : target()) + moved() + samples() + ledgerShell() + closing() + signoff();
+$('#app').innerHTML = (HERO_Q === 'target' ? targetHero() : HERO_Q === 'rings' ? ringsHero() : scanHero()) + printSummary() + srail() + attentionSection()
+  + (HERO_Q === 'target' ? '' : target()) + moved() + samples() + ledgerShell() + closing() + signoff();
 
 /* The rail is filled from the sections that actually rendered. Deriving it from
    a list is how "Target" survived the section it pointed at, and how a patient
@@ -7015,7 +6962,6 @@ function openDrawer(arg) {
   openMarkerId = req.context && req.context !== 'marker' ? null : (req.id != null ? String(req.id) : null);
   if (req.context === 'system') return sysSheet(req.id);
   if (req.context === 'list') return listSheet();
-  if (req.context === 'dates') return datesSheet();
   const id = req.id, mv = BY_ID[id]; if (!mv) return;
   const you = x => x.state === mv.latest.state && inBand(x, mv.latest.value);
   const youL = '<span class="you-l">You</span>';
@@ -7080,40 +7026,6 @@ function listSheet() {
   showDrawer();
 }
 
-/* Your dates. The calendar file is the gift, but a sandboxed page cannot always
-   hand a file to the browser - and the dates themselves are the thing the
-   patient actually needs - so the dates are shown first and the file is
-   offered underneath, only where it can really be delivered. */
-function datesSheet() {
-  const dated = VER.nextSteps.filter(s => s.due), open = VER.nextSteps.filter(s => !s.due);
-  if (!dated.length) return;
-  const wk = iso => { const [y, m, d] = ymd(iso); return DAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]; };
-  const next = VER.retestDate;
-  const rows = dated.map(s => {
-    const [yy, mm, dd] = ymd(s.due), past = s.due < TODAY, isNext = s.due === next;
-    const mark = past ? '<span class="cl-cd past">Under way</span>'
-      : `<span class="cl-cd${isNext ? ' next' : ''} num">${esc(countdown(s.due))}</span>`;
-    return `<li class="${past ? 'past' : isNext ? 'next' : ''}">
-      <span class="cl-d" aria-hidden="true"><b class="num">${dd}</b><small>${esc(MONTHS[mm - 1].slice(0, 3))}</small></span>
-      <span class="cl-t"><span class="cl-w num">${esc(wk(s.due))}, ${esc(monthDay(s.due))}, ${yy}</span><b>${esc(s.title)}</b><small>${esc(s.detail)}</small>${mark}</span></li>`;
-  }).join('');
-  const foot = canSaveFile()
-    ? `<button type="button" class="btn primary block" data-ics-save>${ICON.cal || ''}Download the calendar file</button>`
-    : `<p class="dr-plain">${esc(`${CLINIC.name} sends these dates to your calendar from the patient portal. Here they are in the meantime.`)}</p>`;
-  drawer.innerHTML = `<div class="dr-head" id="drHead">
-      <span class="dr-grab" aria-hidden="true"></span>
-      <div class="dr-bar"><div class="dr-lab"><p class="eyebrow">The plan</p><p class="dr-mini" aria-hidden="true"><b>Your dates</b></p></div>
-      <button type="button" class="x" id="drClose" aria-label="Close">${ICON.x}</button></div>
-    </div>
-    <div class="dr-in">
-      <h2 id="drTitle">Your ${esc(spell(dated.length).toLowerCase())} <em>dates</em></h2>
-      <p class="long">Every dated step in your plan, through your next ${esc(PRODUCT_NAME)}. Each one is a day, not an appointment time${open.length ? `; ${esc(spell(open.length).toLowerCase())} more ${open.length === 1 ? 'step runs' : 'steps run'} throughout` : ''}.</p>
-      <ol class="cal-list">${rows}</ol>
-      <div class="dr-sec"><h3>Where to be</h3><p class="sm">${esc(CLINIC.name)}, ${esc(CLINIC.city)}. ${esc(NP_FIRST)} books the visits with you; the reminders land two days ahead.</p></div>
-    </div>
-    <div class="dr-foot">${foot}</div>`;
-  showDrawer();
-}
 
 /* A marker is addressable: #m/apob opens that result's sheet on load, so the
    clinic can send someone straight to the one row they should read. The hash
@@ -7253,7 +7165,6 @@ slides.push(`<div class="slide cover"><div class="photo" style="background-image
 const WELCOME_HTML = `<div class="stage r-wl">
   <p ${rise(0, 'eyebrow')}>${esc(PRODUCT_NAME)} · ${esc(YEAR)}</p>
   <h2 ${rise(1, 'r-h')}>Welcome back, <em>${esc(V.patient.firstName)}.</em></h2>
-  <p ${rise(2, 'r-sub')}>${esc(paras[0] || '')}</p>
   <div ${rise(3, 'r-meta')}><span>Your nurse practitioner<b>${esc(NP_NAME)}</b></span><span>Blood drawn<b class="num">${esc(COLLECTED)}</b></span><span>Markers<b class="num">${S.total}</b></span></div></div>`;
 slides.push(`<div class="slide welcome r-scanned" data-welcome></div>`);
 if (wins.length) {
@@ -7300,37 +7211,6 @@ ATTENTION.forEach((mv, i) => {
     <div ${rise(3, 'r-c')} data-b="1">${!isOrd(mv) && mv.points.length > 1 ? `<div class="lc lc-tv" data-chart="${esc(mv.marker.id)}" data-variant="tv"></div>` : ''}</div></div></div>`);
 });
 /* Plan: a twelve-month timeline spaced by real dates. */
-const tlStart = V.report.examDate, tlEnd = (() => { const [y, m, d] = ymd(tlStart); return `${y + 1}-${pad2(m)}-${pad2(d)}`; })();
-const tlFrac = iso => clamp((dayNum(iso) - dayNum(tlStart)) / (dayNum(tlEnd) - dayNum(tlStart)), 0, 1);
-const tlMonth = k => { const [y, m, d] = ymd(tlStart); const t = new Date(Date.UTC(y, m - 1 + k, d)); return { f: tlFrac(`${t.getUTCFullYear()}-${pad2(t.getUTCMonth() + 1)}-${pad2(t.getUTCDate())}`), l: MONTHS[t.getUTCMonth()].slice(0, 3) }; };
-{
-  const due = VER.retestDate, dated = VER.nextSteps.filter(s => s.due);
-  const nextIdx = dated.findIndex(s => s.due === due);
-  const ticks = Array.from({ length: 13 }, (_, k) => tlMonth(k));
-  const nodes = dated.map((s, i) => {
-    const f = tlFrac(s.due), next = i === nextIdx, up = (i % 2 === 1) === (nextIdx < 0 || nextIdx % 2 === 1);
-    const end = f > 0.8 ? ' end' : '';
-    const lab = next
-      ? `<p class="tl-m">Next bloodwork</p><p class="tl-big num">${esc(formatLongDate(s.due))}</p><p class="tl-t">${esc(s.title)}</p><p class="tl-d">${esc(s.detail)}</p>`
-      : `<p class="tl-m num">${esc(s.due === TODAY ? 'Today' : formatShortDate(s.due))}</p><p class="tl-t">${esc(s.title)}</p><p class="tl-d">${esc(s.detail)}</p>`;
-    return `<div class="tl-n ${up ? 'up' : 'dn'}${next ? ' next' : ''}${end}" style="left:${(f * 100).toFixed(2)}%;--k:${i}"><span class="tl-lead"></span><i class="tl-dot"></i>${next ? '<svg class="tl-ring" viewBox="0 0 64 40" aria-hidden="true"><ellipse cx="32" cy="20" rx="30" ry="17" transform="rotate(-4 32 20)"/></svg>' : ''}<div class="tl-lab">${lab}</div></div>`;
-  }).join('');
-  slides.push(`<div class="slide">${WMK}<div class="stage r-plan">
-  <p ${rise(0, 'eyebrow')}>Your plan</p><h2 ${rise(1, 'r-h r-h3')}>Your next <em>twelve months</em></h2>
-  <div class="tl">
-    <span class="tl-axis"></span>${ticks.map(t => `<i class="tl-tk" style="left:${(t.f * 100).toFixed(2)}%"></i>`).join('')}
-    ${nodes}
-  </div></div></div>`);
-}
-/* The closing slide: what happens next, with nothing to press. */
-{
-  const due = VER.retestDate, step = VER.nextSteps.find(n => n.due === due);
-  if (step) slides.push(`<div class="slide r-next"><div class="photo" style="background-image:url('${IMG.canopy}')"></div>${WMK}<div class="stage r-nx">
-    <p ${rise(0, 'eyebrow')}>Your next visit</p>
-    <p ${rise(1, 'r-nx-d num')}>${esc(formatLongDate(due))}</p>
-    <p ${rise(2, 'r-nx-t')}>${esc(step.title)}</p>
-    <p ${rise(3, 'r-nx-s')}>${esc(step.detail)}</p></div></div>`);
-}
 $('#slides').innerHTML = slides.join('');
 const SL = [...room.querySelectorAll('.slide')];
 let cur = 0, auto = false, aT = null, capT = null, idleT = null, prevSl = null, tagT = null, bld = 0;
@@ -7865,38 +7745,6 @@ function mountSampleHero() {
   spin();
 }
 
-/* Add to calendar. The dates sheet is the real answer - it works in every
-   context - and the file is written only where the page can actually hand one
-   over, so the button is never a button that quietly does nothing. */
-function saveIcs() {
-  const name = `optimal-${YEAR}-next-steps.ics`;
-  const file = new Blob([icsFor(VER.nextSteps)], { type: 'text/calendar;charset=utf-8' });
-  const n = VER.nextSteps.filter(s2 => s2.due).length;
-  const download = () => {
-    try {
-      const url = URL.createObjectURL(file), a2 = document.createElement('a');
-      a2.href = url; a2.download = name; document.body.appendChild(a2); a2.click();
-      setTimeout(() => { URL.revokeObjectURL(url); a2.remove(); }, 1000);
-      toast(`${n} dates saved. Open the file to add them to your calendar.`);
-    } catch (x) {
-      toast('In the portal this adds your next steps to your calendar.');
-    }
-  };
-  let f = null;
-  try { f = new File([file], name, { type: 'text/calendar' }); } catch (x) { /* no File constructor */ }
-  if (f && navigator.canShare && navigator.canShare({ files: [f] })) {
-    // a browser can advertise sharing and still fail; only a deliberate cancel
-    // should end in nothing, so anything else falls through to the download
-    navigator.share({ files: [f], title: `${PRODUCT_NAME} ${YEAR}` })
-      .catch(err => { if (!err || err.name !== 'AbortError') download(); });
-    return;
-  }
-  download();
-}
-document.addEventListener('click', e => {
-  if (e.target.closest('[data-ics-save]')) { saveIcs(); return; }
-  if (e.target.closest('[data-ics]')) openDrawer({ context: 'dates' });
-});
 
 /* The plates light when they arrive, and the sheet's plate lights as it opens. */
 function litPlates(root) {

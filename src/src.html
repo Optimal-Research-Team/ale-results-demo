@@ -787,7 +787,7 @@ section{scroll-margin-top:64px}
 @media (max-width:900px){.mv-round{width:420px;transform:translate(42%,-50%);opacity:.085}}
 @media print{.mv-round{display:none}.s-moved{overflow:visible!important;position:static!important;isolation:auto!important}}
 
-.s-ledger{padding:calc(var(--sec) - 16px) 0 var(--sec);background:var(--bone-2);border-block:1px solid var(--hair);--rb-ring:var(--bone-2);--rb-base:rgba(118,115,109,.34);--ink-muted:#6A6761}
+.s-ledger{padding:calc(var(--sec) - 16px) 0 var(--sec);background:var(--cream);border-block:1px solid var(--hair);--rb-ring:var(--cream);--rb-base:rgba(118,115,109,.3)}
 .s-plan{padding:var(--sec) 0}
 .s-sign{padding:40px 0 calc(var(--sec) * .8)}
 .head .eyebrow + h2,.head .eyebrow + .d2{margin-top:16px}
@@ -822,7 +822,7 @@ html.motion .mr.in{clip-path:inset(-16% -8% -26% -8%);transform:none;transition:
 .letter .p2{margin-top:24px;font-size:17px;line-height:1.62;color:var(--ink-soft);max-width:58ch}
 .sign{display:flex;align-items:center;gap:12px;margin-top:28px;font-size:13px;line-height:1.4;color:var(--ink-muted);letter-spacing:0}
 /* a colophon finishes the signature line, the way a printed plate carries one */
-.colophon{flex:none;width:76px;height:auto;margin-left:auto;opacity:.38}
+.colophon{flex:none;width:76px;height:auto;margin-left:auto;align-self:center;opacity:.34}
 @media (max-width:640px){.colophon{width:58px}}
 @media print{.colophon{display:none}}
 .sign b{display:block;font-size:15px;font-weight:500;color:var(--ink-strong);letter-spacing:-.008em}
@@ -977,6 +977,8 @@ html.motion .prio[data-open="true"] .prio-grid > *:nth-child(2){animation-delay:
 .rb .z.e0{border-radius:3px 0 0 3px;box-shadow:inset -1.5px 0 0 var(--rb-ring)}
 .rb .z.e1{border-radius:0 3px 3px 0;box-shadow:inset 1.5px 0 0 var(--rb-ring)}
 .rb .z.e0.e1{border-radius:3px;box-shadow:none}
+.rb .z.nr{background:rgba(118,115,109,.26)}
+.rb .z.nr.on{background:rgba(118,115,109,.38)}
 .z-borderline{background:rgba(201,123,45,.52)}
 .z-out_of_range{background:var(--hatch)}
 .rb .z.on{height:6px;margin-top:-3px}
@@ -1206,6 +1208,22 @@ html.motion .mv.in .lp{transform:none;opacity:1;transition:transform .45s cubic-
 .bm-mk .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bm-mk .v{font-weight:500;color:var(--cream);white-space:nowrap}
 .bm-mk .v small{margin-left:4px;font-size:12px;font-weight:400;color:rgba(255,252,247,.5)}
+/* the same list, on cream */
+.drawer .bm-list{background:var(--bone-2);box-shadow:inset 0 0 0 1px var(--hair)}
+.drawer .bm-row{border-bottom-color:var(--hair)}
+.drawer .bm-row::before{background:var(--forest)}
+.drawer .bm-row.on{background:rgba(44,78,37,.05)}
+.drawer .bm-nm{color:var(--ink-strong)}
+.drawer .bm-st{color:var(--ink-muted)}
+.drawer .bm-sub{color:var(--ink-muted)}
+.drawer .bm-mk{border-top-color:var(--hair);color:var(--ink-soft)}
+.drawer .bm-mk .v{color:var(--ink-strong)}
+.drawer .bm-mk .v small{color:var(--ink-muted)}
+.drawer .bm-g{box-shadow:0 0 0 3px var(--bone-2)}
+@media (hover:hover){
+  .drawer .bm-row:not(.on):hover{background:rgba(44,78,37,.04)}
+  .drawer .bm-btn:hover .bm-nm,.drawer .bm-mk:hover .nm{color:var(--forest)}
+}
 .bm-mk .state,.bm-mk .chip{justify-self:start}
 .bm-go{height:42px;margin-top:12px;padding:0 20px;font-size:14px}
 .btn.ghost{background:transparent;color:var(--cream);box-shadow:inset 0 0 0 1px rgba(255,252,247,.36)}

@@ -436,38 +436,6 @@ function mountSampleHero() {
   spin();
 }
 
-/* Add to calendar. The dates sheet is the real answer - it works in every
-   context - and the file is written only where the page can actually hand one
-   over, so the button is never a button that quietly does nothing. */
-function saveIcs() {
-  const name = `optimal-${YEAR}-next-steps.ics`;
-  const file = new Blob([icsFor(VER.nextSteps)], { type: 'text/calendar;charset=utf-8' });
-  const n = VER.nextSteps.filter(s2 => s2.due).length;
-  const download = () => {
-    try {
-      const url = URL.createObjectURL(file), a2 = document.createElement('a');
-      a2.href = url; a2.download = name; document.body.appendChild(a2); a2.click();
-      setTimeout(() => { URL.revokeObjectURL(url); a2.remove(); }, 1000);
-      toast(`${n} dates saved. Open the file to add them to your calendar.`);
-    } catch (x) {
-      toast('In the portal this adds your next steps to your calendar.');
-    }
-  };
-  let f = null;
-  try { f = new File([file], name, { type: 'text/calendar' }); } catch (x) { /* no File constructor */ }
-  if (f && navigator.canShare && navigator.canShare({ files: [f] })) {
-    // a browser can advertise sharing and still fail; only a deliberate cancel
-    // should end in nothing, so anything else falls through to the download
-    navigator.share({ files: [f], title: `${PRODUCT_NAME} ${YEAR}` })
-      .catch(err => { if (!err || err.name !== 'AbortError') download(); });
-    return;
-  }
-  download();
-}
-document.addEventListener('click', e => {
-  if (e.target.closest('[data-ics-save]')) { saveIcs(); return; }
-  if (e.target.closest('[data-ics]')) openDrawer({ context: 'dates' });
-});
 
 /* The plates light when they arrive, and the sheet's plate lights as it opens. */
 function litPlates(root) {
