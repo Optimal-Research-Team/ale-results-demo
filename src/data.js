@@ -142,7 +142,7 @@ const VERSION = {
   ],
   nextSteps: [
     { title: 'Start vitamin D3, 2,000 IU daily', detail: 'With a meal that contains fat', due: '2026-09-28' },
-    { title: 'Lipid follow-up with Maya', detail: 'ApoB and a full lipid panel', due: '2026-12-10' },
+    { title: 'Lipid follow-up', detail: 'ApoB and a full lipid panel', due: '2026-12-10' },
     { title: 'Spring bloodwork', detail: 'Vitamin D recheck', due: '2027-03-15' },
     { title: 'Next ' + PRODUCT_NAME, detail: 'Full panel, fasting', due: '2027-09-23' },
   ],

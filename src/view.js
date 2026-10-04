@@ -1,6 +1,6 @@
 /* ==========================================================================
    View — Annual Longevity Assessment on the Optimal Health Design System.
-   Part one (Maya's narrative): hero → section rail → note → longevity target
+   Part one: hero → section rail → what needs attention → longevity target
    → priorities → progress. Part two (explore): samples → body → every result
    → plan → sign-off, plus the drawer and the exam-room deck. The three
    signatures (target, samples, body) are mounted by sig.js after this file.
@@ -494,7 +494,7 @@ function targetHero() {
       <div class="sc-cA">
         <p class="eyebrow">${esc(PRODUCT_NAME)} · ${esc(YEAR)}</p>
         <h1 id="thH">${esc(S.total)} markers, <em>one picture</em></h1>
-        <div class="byline"><span class="avatar" aria-hidden="true">${esc(V.clinician.initials)}</span><span>Reviewed by <b>${esc(NP_NAME)}</b><br><span class="num">${esc(PUBLISHED)}</span></span></div>
+        <div class="byline"><span>Blood drawn <b class="num">${esc(COLLECTED)}</b><br>at ${esc(V.report.labName)}</span></div>
       </div>
       ${mv1 ? `<div class="sc-cB" aria-hidden="true">
         <p class="eyebrow">Furthest from ${esc(goalNoun(mv1))} · ${esc(SYSTEM_LABEL[mv1.marker.system])}</p>
@@ -575,8 +575,8 @@ function ringsHero() {
         <p class="sc-pill">${stats.map(([n, l]) => `<span class="nw"><b class="num">${n}</b> ${esc(l)}</span>`).join('<span class="sep"> · </span>')}</p>
         <p class="eyebrow">${esc(PRODUCT_NAME)} · ${esc(YEAR)}</p>
         <h1 id="rgH">${esc(S.total)} markers, <em>one picture</em></h1>
-        <div class="byline"><span class="avatar" aria-hidden="true">${esc(V.clinician.initials)}</span><span>Reviewed by <b>${esc(NP_NAME)}</b><br><span class="num">${esc(PUBLISHED)}</span></span></div>
-        <div class="capsule"><button type="button" data-toast="In the portal this opens Messages with ${esc(NP_FIRST)}.">Message ${esc(NP_FIRST)}</button><button type="button" class="solid" data-toast="In the portal this downloads your report as a PDF.">${ICON.dl}Download PDF</button></div>
+        <div class="byline"><span>Blood drawn <b class="num">${esc(COLLECTED)}</b><br>at ${esc(V.report.labName)}</span></div>
+        <div class="capsule"><button type="button" class="solid" data-toast="In the portal this downloads your report as a PDF.">${ICON.dl}Download PDF</button></div>
         <nav class="sc-stats" aria-label="Your results at a glance">${[[S.healthy, 'markers in a healthy range', '#target', ''], [attention, 'markers to watch this year', '#results', ' data-watch'], [ATTENTION.length, 'results outside our target', '#attention', '']].map(([n, l, h, x]) => `<a href="${h}"${x}><b class="num" data-count="${n}">${n}</b><span>${esc(l)}</span></a>`).join('')}</nav>
       </div>
       <div class="sc-cB" aria-hidden="true">
@@ -621,8 +621,8 @@ function scanHero() {
         <p class="sc-pill">${stats.map(([n, l]) => `<span class="nw"><b class="num">${n}</b> ${esc(l)}</span>`).join('<span class="sep"> · </span>')}</p>
         <p class="eyebrow">${esc(PRODUCT_NAME)} · ${esc(YEAR)}</p>
         <h1 id="scH">${esc(S.total)} markers, <em>one picture</em></h1>
-        <div class="byline"><span class="avatar" aria-hidden="true">${esc(V.clinician.initials)}</span><span>Reviewed by <b>${esc(NP_NAME)}</b><br><span class="num">${esc(PUBLISHED)}</span></span></div>
-        <div class="capsule"><button type="button" data-toast="In the portal this opens Messages with ${esc(NP_FIRST)}.">Message ${esc(NP_FIRST)}</button><button type="button" class="solid" data-toast="In the portal this downloads your report as a PDF.">${ICON.dl}Download PDF</button></div>
+        <div class="byline"><span>Blood drawn <b class="num">${esc(COLLECTED)}</b><br>at ${esc(V.report.labName)}</span></div>
+        <div class="capsule"><button type="button" class="solid" data-toast="In the portal this downloads your report as a PDF.">${ICON.dl}Download PDF</button></div>
         <nav class="sc-stats" aria-label="Your results at a glance">${stats.map(([n, , l, h, x]) => `<a href="${h}"${x}><b class="num" data-count="${n}">${n}</b><span>${esc(l)}</span></a>`).join('')}</nav>
       </div>
       <div class="sc-cB" aria-hidden="true">
@@ -647,7 +647,6 @@ const HERO_Q = new URLSearchParams(location.search).get('hero') || 'target';
 const RAIL = (HERO_Q === 'target'
   ? [['scan', 'Target'], ['attention', 'Attention'], ['progress', 'Progress'], ['samples', 'Samples'], ['results', 'Results']]
   : [['scan', 'Body'], ['attention', 'Attention'], ['target', 'Target'], ['progress', 'Progress'], ['samples', 'Samples'], ['results', 'Results']]);
-/* chapter marks: the page reads as two halves, Maya's narrative then the patient's own exploring */
 const chap = (n, t) => `<p class="chap"><span class="chap-n">${n}</span><span class="chap-t">${esc(t)}</span></p>`;
 function srail() {
   return `<nav class="srail" aria-label="Sections"><div class="srail-bar">
@@ -954,7 +953,6 @@ function ledgerShell() {
         <div class="tb-sub">${KEY}<button type="button" class="xall" id="xall"></button></div>
         <div id="rows" aria-live="polite"></div>
         <div class="lg-note">
-          <p>Reviewed by <b>${esc(NP_NAME)}</b><span class="sep"> · </span><span class="num">${esc(PUBLISHED)}</span></p>
           <p>Blood drawn <span class="num">${esc(COLLECTED)}</span> at ${esc(V.report.labName)}</p>
           <p>Optimal ranges are our clinic's longevity targets, reviewed by our nurse practitioners. Lab ranges come from ${esc(V.report.labName)}.</p>
         </div>
@@ -1052,7 +1050,6 @@ function printSummary() {
 }
 
 
-/* The page closes on a warm, confident moment: Maya's own last line from her note, one action. */
 /* The close: the engraved shore, the clinic, and the date the blood was drawn.
    No quote - it was lifted from a note the page no longer carries. */
 function closing() {
@@ -1065,8 +1062,7 @@ function closing() {
 }
 function signoff() {
   return `<section id="signoff" class="s-sign" aria-label="About this report"><div class="wrap"><div class="so">
-    <span class="avatar" aria-hidden="true">${esc(V.clinician.initials)}</span>
-    <div class="so-t"><p class="so-by">Reviewed by <b>${esc(NP_NAME)}</b><span class="so-d"><span class="so-sep"> · </span><span class="num">${esc(PUBLISHED)}</span></span></p>
+    <div class="so-t"><p class="so-by">${esc(PRODUCT_NAME)}<span class="so-d"><span class="so-sep"> · </span><span class="num">${esc(PUBLISHED)}</span></span></p>
       <p>Blood drawn <span class="num">${esc(COLLECTED)}</span> at ${esc(V.report.labName)}</p>
       <p class="so-fine">Optimal ranges are our clinic's longevity targets, reviewed by our nurse practitioners. Lab ranges come from ${esc(V.report.labName)}.</p></div>
     ${SPRIG_URI ? '<img class="colophon" src="" alt="" aria-hidden="true">' : ''}
@@ -1352,7 +1348,7 @@ function openDrawer(arg) {
       <div class="dr-sec"><h3>Ranges</h3><table class="rtab"><tbody>${rows}</tbody></table></div>
       <div class="dr-sec"><h3>From the lab</h3><p class="sm">Blood drawn ${esc(COLLECTED)} at ${esc(V.report.labName)}. Optimal is our clinic's longevity target; in range follows the lab's reference interval.</p></div>
     </div>
-    <div class="dr-foot"><button type="button" class="btn primary block" data-toast="In the portal this opens Messages with ${esc(NP_FIRST)}.">${ICON.msg}Ask ${esc(NP_FIRST)} about ${esc(name)}</button></div>`;
+    `;
   showDrawer();
 }
 
@@ -1532,7 +1528,7 @@ slides.push(`<div class="slide cover"><div class="photo" style="background-image
 const WELCOME_HTML = `<div class="stage r-wl">
   <p ${rise(0, 'eyebrow')}>${esc(PRODUCT_NAME)} · ${esc(YEAR)}</p>
   <h2 ${rise(1, 'r-h')}>Welcome back, <em>${esc(V.patient.firstName)}.</em></h2>
-  <div ${rise(3, 'r-meta')}><span>Your nurse practitioner<b>${esc(NP_NAME)}</b></span><span>Blood drawn<b class="num">${esc(COLLECTED)}</b></span><span>Markers<b class="num">${S.total}</b></span></div></div>`;
+  <div ${rise(3, 'r-meta')}><span>Lab<b>${esc(V.report.labName)}</b></span><span>Blood drawn<b class="num">${esc(COLLECTED)}</b></span><span>Markers<b class="num">${S.total}</b></span></div></div>`;
 slides.push(`<div class="slide welcome r-scanned" data-welcome></div>`);
 if (wins.length) {
   const six = wins.slice(0, 6), lab = six.some(m => !isTarget(goalOf(m)));

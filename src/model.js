@@ -103,10 +103,8 @@ const VIEW = {
   productName: PRODUCT_NAME,
   report: { id: 'sample-report', examDate: LAST_EXAM, collectedAt: '2026-09-12T08:10:00-04:00', labName: 'Dynacare', publishedAt: '2026-09-24T16:30:00-04:00', amended: false, status: 'published' },
   patient: { firstName: 'Daniel', sex: 'M', ageAtExam: 44 },
-  clinician: { displayName: 'Maya Fischer', designation: 'NP', initials: 'MF' },
+
   version: VERSION, markers: MARKERS, systems: SYSTEMS, summary: SUMMARY, examDates: EXAM_DATES,
   catalog: { version: 'sample', approved: false },
 };
-const NP_NAME = `${VIEW.clinician.displayName}, ${VIEW.clinician.designation}`;
-const NP_FIRST = VIEW.clinician.displayName.split(' ')[0];
 
