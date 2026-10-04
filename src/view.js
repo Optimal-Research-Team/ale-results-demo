@@ -1016,6 +1016,7 @@ function renderLedger() {
   syncXall();
   if (tabsReady) syncTabs();
   $$('.rb[data-lay]', $('#rows')).forEach(layRB);
+  document.dispatchEvent(new CustomEvent('plates:new', { detail: $('#rows') }));
 }
 function syncXall() {
   const xall = $('#xall'), boxes = $$('.grp-w', $('#rows')), forced = ui.f !== 'all' || !!ui.sys || !!ui.q.trim();

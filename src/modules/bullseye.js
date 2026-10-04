@@ -122,13 +122,11 @@ function renderBullseye(el, opts) {
 .bx-core{filter:var(--bx-core-lift,none)}
 /* parallax rides the translate property, not transform, so it composes
    with the entrance animations instead of fighting them */
-.bx-rings,.bx-bounds,.bx-keys{translate:calc(var(--bx-px,0) * 2.5px) calc(var(--bx-py,0) * 2.5px)}
-.bx-cmp{translate:calc(var(--bx-px,0) * 4px) calc(var(--bx-py,0) * 4px)}
-.bx-dots{translate:calc(var(--bx-px,0) * 7px) calc(var(--bx-py,0) * 7px)}
+.bx-rings,.bx-bounds,.bx-keys,.bx-cmp,.bx-dots,.bx-ghosts,.bx-spoke{translate:calc(var(--bx-px,0) * 3px) calc(var(--bx-py,0) * 3px)}
 .bx-labs{translate:calc(var(--bx-px,0) * -2px) calc(var(--bx-py,0) * -2px)}
-.bx-rings,.bx-bounds,.bx-keys,.bx-cmp,.bx-dots,.bx-labs{transition:translate .5s cubic-bezier(.2,.7,.2,1)}
-.bx-par .bx-rings,.bx-par .bx-bounds,.bx-par .bx-keys,.bx-par .bx-cmp,.bx-par .bx-dots,.bx-par .bx-labs{transition:none}
-.bx-rm .bx-rings,.bx-rm .bx-bounds,.bx-rm .bx-keys,.bx-rm .bx-cmp,.bx-rm .bx-dots,.bx-rm .bx-labs{translate:none}
+.bx-rings,.bx-bounds,.bx-keys,.bx-cmp,.bx-dots,.bx-ghosts,.bx-spoke,.bx-labs{transition:translate .5s cubic-bezier(.2,.7,.2,1)}
+.bx-par .bx-rings,.bx-par .bx-bounds,.bx-par .bx-keys,.bx-par .bx-cmp,.bx-par .bx-dots,.bx-par .bx-ghosts,.bx-par .bx-spoke,.bx-par .bx-labs{transition:none}
+.bx-rm .bx-rings,.bx-rm .bx-bounds,.bx-rm .bx-keys,.bx-rm .bx-cmp,.bx-rm .bx-dots,.bx-rm .bx-ghosts,.bx-rm .bx-spoke,.bx-rm .bx-labs{translate:none}
 .bx-ghosts{transition:opacity .45s cubic-bezier(.2,.7,.2,1)}
 .bx-ghosts.off{opacity:0}
 /* the ghosts measure a distance, so they reach out to it rather than appearing:
@@ -911,7 +909,8 @@ function renderBullseye(el, opts) {
         g.style.transform = `translate(${f1(x)}px,${f1(y)}px)`;
         if (g.dataset.st !== st) {
           g.dataset.st = st;
-          g.setAttribute('class', `bx-dot s-${st}${g.classList.contains('on') ? ' on' : ''}`);
+          ORDER.forEach(o => g.classList.remove('s-' + o));
+          g.classList.add('bx-dot', 's-' + st);
           g.querySelectorAll('circle[fill]:not([fill="transparent"]):not([fill="none"])').forEach(c => c.setAttribute('fill', PAL.dot[st]));
         }
         if (st === 'optimal') lit++;
@@ -938,7 +937,8 @@ function renderBullseye(el, opts) {
         const st = pv && k < 0.5 ? pv.state : m.state;
         if (g.dataset.st !== st) {
           g.dataset.st = st;
-          g.setAttribute('class', `bx-dot s-${st}${g.classList.contains('on') ? ' on' : ''}`);
+          ORDER.forEach(o => g.classList.remove('s-' + o));
+          g.classList.add('bx-dot', 's-' + st);
           g.querySelectorAll('circle[fill]:not([fill="transparent"]):not([fill="none"])').forEach(c => c.setAttribute('fill', PAL.dot[st]));
         }
         if (st === 'optimal') n++;
