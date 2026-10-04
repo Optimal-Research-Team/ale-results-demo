@@ -356,7 +356,7 @@ canvas.sc-poster{transition:opacity .3s linear}
   .ps-f{margin:8mm 0 0;padding-top:2.5mm;border-top:1px solid #DDDCDB;font-size:8.5pt;color:#666}
   .scan-track{height:auto!important}
   .scan-frame{position:static!important;height:auto!important;background:#fff!important;overflow:visible!important}
-  .scan-stage,.sample-stage,.rg-wrap,.sample-legend,.sc-cB,.th-yr,.th-hint,.th-hatch{display:none!important}
+  .scan-stage,.sample-stage,.rg-wrap,.sample-legend,.sc-cB,.th-yr,.th-scrub,.th-hint,.th-hatch{display:none!important}
   .s-thero .th-fig{position:static!important;display:block!important;inset:auto!important;margin:4mm auto 0!important}
   .s-thero .th-chart{width:min(112mm,100%)!important;margin-inline:auto}
   .s-thero .th-cap{display:block!important;padding:0!important}
@@ -516,6 +516,23 @@ html.tv .s-thero h1{font-size:44px}
 .s-thero .th-yr span{color:var(--ink-muted);opacity:.55}
 .s-thero .th-yr span.on{color:var(--ink-strong);opacity:1}
 .s-thero .th-yr i{background:var(--bone-3)}
+/* the scrubber: a real range input, invisible, over a drawn rail */
+.th-scrub{position:relative;display:block;width:min(300px,42vw);height:40px;flex:none;margin-inline:18px}
+.th-scrub .sb-rail{position:absolute;left:0;right:0;top:7px;height:2px;border-radius:2px;background:var(--bone-3)}
+.th-scrub .sb-fill{position:absolute;left:0;top:0;bottom:0;width:100%;border-radius:2px;background:var(--forest);transform-origin:left;transition:none}
+.th-scrub .sb-marks{position:absolute;left:0;right:0;top:24px;display:block;height:14px}
+.th-scrub .sb-y{position:absolute;left:var(--p);transform:translateX(-50%);font:600 11px/1 var(--sans);letter-spacing:.08em;color:var(--ink-muted);white-space:nowrap;transition:color .25s var(--ease)}
+.th-scrub .sb-y.on{color:var(--ink-strong)}
+.th-scrub input{position:absolute;left:-8px;right:-8px;top:-4px;width:calc(100% + 16px);height:24px;margin:0;padding:0;background:none;-webkit-appearance:none;appearance:none;cursor:ew-resize}
+.th-scrub input:focus{outline:none}
+.th-scrub input:focus-visible{outline:2px solid var(--focus);outline-offset:3px;border-radius:12px}
+.th-scrub input::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--forest);box-shadow:0 0 0 3.5px var(--cream),0 1px 4px rgba(44,78,37,.28);cursor:ew-resize;transition:transform .14s var(--ease)}
+.th-scrub input::-moz-range-thumb{width:15px;height:15px;border:none;border-radius:50%;background:var(--forest);box-shadow:0 0 0 3.5px var(--cream),0 1px 4px rgba(44,78,37,.28);cursor:ew-resize}
+.th-scrub input:hover::-webkit-slider-thumb,.th-scrub input:active::-webkit-slider-thumb{transform:scale(1.18)}
+.th-scrub input:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px var(--cream),0 0 0 6px var(--focus)}
+.th-scrub input:focus-visible::-moz-range-thumb{box-shadow:0 0 0 3px var(--cream),0 0 0 6px var(--focus)}
+@media (max-width:640px){.th-scrub{width:min(200px,46vw);margin-inline:14px}.th-scrub .sb-y{font-size:10px;letter-spacing:.05em}}
+@media print{.th-scrub{display:none!important}}
 .s-thero .sc-next{color:var(--ink-strong);border-bottom-color:rgba(44,78,37,.4)}
 .s-thero .sc-next:hover{border-bottom-color:var(--forest)}
 .s-thero .sc-next .sc-nk{color:var(--forest)}
@@ -2673,6 +2690,9 @@ function renderBullseye(el, opts) {
 .bx-rings,.bx-bounds,.bx-keys,.bx-cmp,.bx-dots,.bx-labs{transition:translate .5s cubic-bezier(.2,.7,.2,1)}
 .bx-par .bx-rings,.bx-par .bx-bounds,.bx-par .bx-keys,.bx-par .bx-cmp,.bx-par .bx-dots,.bx-par .bx-labs{transition:none}
 .bx-rm .bx-rings,.bx-rm .bx-bounds,.bx-rm .bx-keys,.bx-rm .bx-cmp,.bx-rm .bx-dots,.bx-rm .bx-labs{translate:none}
+.bx-ghosts{transition:opacity .45s cubic-bezier(.2,.7,.2,1)}
+.bx-ghosts.off{opacity:0}
+.bx-rm .bx-ghosts{transition:none}
 .bx-dot{cursor:pointer;outline:none;transition:opacity .28s cubic-bezier(.2,.7,.2,1)}
 .bx-dot .fr,.bx-dot .sel{opacity:0;transition:opacity .16s}
 .bx-dot:focus-visible .fr{opacity:1}
@@ -2745,6 +2765,8 @@ function renderBullseye(el, opts) {
 
   /* ---------- data ---------- */
   const markersIn = (opts.markers || []).filter(m => m && ORDER.includes(m.state));
+  // how many exams the markers carry between them; 1 means no history to walk
+  const EXAMS = markersIn.reduce((n, m) => Math.max(n, (m.series && m.series.length) || 0), 0) || 1;
   const sysIn = (opts.systems || []).slice();
   markersIn.forEach(m => { if (!sysIn.some(s => s.id === m.system)) sysIn.push({ id: m.system, label: m.systemLabel || m.system }); });
   const SYS = sysIn.map(s => ({ id: s.id, label: s.label, short: s.short || SHORT[s.id] || String(s.label).split(/\s+/)[0],
@@ -2848,6 +2870,23 @@ function renderBullseye(el, opts) {
     });
     relax(pos);
     pos.forEach(p => { const q = P(p.r, p.ang); p.x = q[0]; p.y = q[1]; });
+    /* one position per exam in the marker's history, so walking the years is a
+       lookup rather than a solve. Relaxation is only applied to the present, so
+       earlier frames can overlap a little - they are a passage, not a reading. */
+    pos.forEach((p, i) => {
+      const ser = DOTS[i].m.series;
+      if (!ser || ser.length < 2) { p.frames = null; return; }
+      const hol = !!DOTS[i].m.hollow;
+      p.frames = ser.map(f => {
+        if (!f) return null;
+        const h = hol && f.state === 'in_range';
+        const q = P(radial(f.state, f.closeness, h), p.ang);
+        return { x: q[0], y: q[1], state: f.state };
+      });
+      // the last frame is the present, which relax() may have nudged
+      const last = p.frames.length - 1;
+      if (p.frames[last]) { p.frames[last].x = p.x; p.frames[last].y = p.y; }
+    });
     /* OPTIMAL joins the key only where it clears every optimal dot near 12 o'clock */
     {
       const k0 = keys[0], band0 = rr[1] + 3, band1 = rr[2] - keyCap - 3;
@@ -2944,6 +2983,25 @@ function renderBullseye(el, opts) {
     });
     cmp += '</g>';
     out.push(cmp);
+
+    /* Where target is. For every marker outside the optimal ring, an open dot on
+       its own spoke at the edge of that ring, joined to where the result
+       actually sits. Nothing is predicted: the ring is the clinic's target and
+       the marker's angle is its own, so this is the same two facts the chart
+       already shows, drawn as a distance. */
+    let ghosts = `<g class="bx-ghosts" aria-hidden="true">`;
+    pos.forEach((p, i) => {
+      const m = DOTS[i].m;
+      if (!m.hasTarget || m.hollow || (m.state !== 'borderline' && m.state !== 'out_of_range')) return;
+      const rT = radial('optimal', 0, false), q = P(rT, p.ang);
+      const dx = q[0] - p.x, dy = q[1] - p.y, L = Math.hypot(dx, dy);
+      if (L < p.dr + 9) return;                       // already as good as there
+      const ux = dx / L, uy = dy / L, g0 = p.dr + 3.5, g1 = L - (DR * 0.62 + 3.5);
+      ghosts += `<path d="M${f1(p.x + ux * g0)} ${f1(p.y + uy * g0)}L${f1(p.x + ux * g1)} ${f1(p.y + uy * g1)}" stroke="${PAL.dot[m.state]}" stroke-opacity=".34" stroke-width="1" stroke-dasharray="1.5 2.6" fill="none"/>`
+        + `<circle cx="${f1(q[0])}" cy="${f1(q[1])}" r="${f1(DR * 0.62)}" fill="none" stroke="${PAL.dot[m.state]}" stroke-opacity=".62" stroke-width="1.2"/>`;
+    });
+    ghosts += '</g>';
+    out.push(ghosts);
 
     out.push(`<line class="bx-spoke" x1="${f1(cx)}" y1="${f1(cy)}" x2="${f1(cx)}" y2="${f1(cy)}" stroke="${PAL.spoke}" stroke-width="1" stroke-linecap="round"/>`);
 
@@ -3367,8 +3425,47 @@ function renderBullseye(el, opts) {
     /* setYear(t): 0 is the previous exam, 1 is this one. Dots travel between
        the positions they already hold, their state flips at the midpoint, and
        the centre count counts with them. */
+    /* Walk the chart through the whole history. f is a float index into the
+       exam list, so 0 is the first assessment and N-1 is today; 1.5 is halfway
+       between the second and third. A marker not measured in a given year holds
+       its last known position rather than jumping to the middle. */
+    setFrame(f) {
+      const n = EXAMS;
+      if (n < 2) return;
+      const u = f < 0 ? 0 : f > n - 1 ? n - 1 : f;
+      const a = Math.floor(u), b = Math.min(n - 1, a + 1), k = u - a;
+      let lit = 0;
+      dotEls.forEach((g, i) => {
+        if (!g) return;
+        const p = pos[i], fr = p.frames;
+        let x = p.x, y = p.y, st = DOTS[i].m.state;
+        if (fr) {
+          // the nearest measured frame at or before each end of the span
+          const at = j => { for (let q = j; q >= 0; q--) if (fr[q]) return fr[q]; return null; };
+          const A = at(a), B = at(b);
+          if (A && B) { x = A.x + (B.x - A.x) * k; y = A.y + (B.y - A.y) * k; st = k < 0.5 ? A.state : B.state; }
+          else if (A) { x = A.x; y = A.y; st = A.state; }
+        }
+        g.style.transform = `translate(${f1(x)}px,${f1(y)}px)`;
+        if (g.dataset.st !== st) {
+          g.dataset.st = st;
+          g.setAttribute('class', `bx-dot s-${st}${g.classList.contains('on') ? ' on' : ''}`);
+          g.querySelectorAll('circle[fill]:not([fill="transparent"]):not([fill="none"])').forEach(c => c.setAttribute('fill', PAL.dot[st]));
+        }
+        if (st === 'optimal') lit++;
+      });
+      setCount(lit);
+      const live = u > n - 1.015;
+      // the trails compare the last two exams only; walking back through earlier
+      // years they would point at a future that has not happened yet
+      const onLeg = u > n - 2 && !live;
+      const cmp = svg.querySelector('.bx-cmp'); if (cmp) cmp.classList.toggle('on', onLeg);
+      const gh = svg.querySelector('.bx-ghosts'); if (gh) gh.classList.toggle('off', !live);
+    },
+    /* the scroll handler drives only the last leg, prev -> today */
     setYear(t) {
       const k = t < 0 ? 0 : t > 1 ? 1 : t;
+      if (EXAMS >= 2) return this.setFrame(EXAMS - 2 + k);
       let n = 0;
       dotEls.forEach((g, i) => {
         if (!g) return;
@@ -5919,6 +6016,25 @@ const R_AT = [0.50, 0.685, 0.87];                       // ring radius per year,
    vector, so it is exact on a 75-inch screen and on a 360 px phone with no
    mesh, photograph, video or fallback behind it. Scrolling turns the year.
    The copy is deliberately spare: the chart already says 33 of 39. */
+/* The years, as something you can walk through rather than only read. A real
+   range input does the keyboard, the screen reader and the touch target for us;
+   the rail and the year marks are drawn around it. With only one assessment
+   there is nothing to walk, so it stays the plain pair of labels. */
+function scrubUI() {
+  const n = EXAM_DATES.length;
+  const yrs = EXAM_DATES.map(d => formatYear(d));
+  if (n < 2) return `<span class="th-yr" id="thYr" aria-hidden="true"><span class="on">${esc(yrs[0] || '')}</span></span>`;
+  const marks = yrs.map((y, i) => `<span class="sb-y" style="--p:${n > 1 ? (i / (n - 1)) * 100 : 0}%" data-i="${i}">${esc(y)}</span>`).join('');
+  return `<span class="th-scrub" id="thScrub">
+    <span class="sb-rail" aria-hidden="true"><i class="sb-fill" id="sbFill"></i></span>
+    <span class="sb-marks" aria-hidden="true">${marks}</span>
+    <label class="sr" for="sbIn">Move through your assessments, ${esc(yrs[0])} to ${esc(yrs[n - 1])}</label>
+    <input id="sbIn" type="range" min="0" max="${n - 1}" step="0.01" value="${n - 1}"
+      aria-valuetext="${esc(yrs[n - 1])}" list="sbTicks">
+    <datalist id="sbTicks">${yrs.map((y, i) => `<option value="${i}" label="${esc(y)}"></option>`).join('')}</datalist>
+  </span>`;
+}
+
 function targetHero() {
   // the hero's second beat is the result furthest from target, taken from the
   // data rather than from anything the clinic has to write
@@ -5928,7 +6044,7 @@ function targetHero() {
     <canvas class="th-hatch" id="thHatch" aria-hidden="true"></canvas>
     <figure class="th-fig">
       <div class="th-chart" id="bxHero"></div>
-      <figcaption class="th-cap"><span class="th-yr" id="thYr" aria-hidden="true"><span class="on">${esc(PREV_YEAR)}</span><i></i><span>${esc(YEAR)}</span></span>
+      <figcaption class="th-cap">${scrubUI()}
         <span class="th-hint"><span class="tp">Tap</span><span class="hv">Select</span> a dot for its history</span></figcaption>
     </figure>
     <div class="scan-copy" data-state="A">
@@ -7011,7 +7127,10 @@ document.addEventListener('click', e => {
   const gp = e.target.closest('[data-grp]'); if (gp) { const box = gp.closest('.grp-w'); setGroup(box, box.dataset.open !== 'true'); syncXall(); return; }
   if (e.target.closest('#xall')) { const open = !$('#xall').dataset.all; $$('.grp-w', $('#rows')).forEach(b => setGroup(b, open)); syncXall(); keepLedgerInView(); return; }
   const p = e.target.closest('[data-prio]'); if (p) {
-    if (MQ.phone.matches) { openDrawer({ context: 'priority', i: +p.dataset.prio }); return; }
+    if (MQ.phone.matches) {
+      const mv = ATTENTION[+p.dataset.prio];
+      if (mv) { openDrawer(mv.marker.id); return; }
+    }
     const box = p.closest('.prio'), open = box.dataset.open !== 'true'; setOpen(box, p, open); if (open) glide(box); else $$('.pk-rb .rb', box).forEach(layRB); return;
   }
   const wd = e.target.closest('.wwd'); if (wd) { const pr = wd.closest('.prio'); pr.classList.add('wwd-on'); wd.setAttribute('aria-expanded', 'true'); const pt = $('.plan-t', pr); if (pt) { pt.tabIndex = -1; pt.focus({ preventScroll: true }); } return; }
@@ -7309,8 +7428,16 @@ const BX_MARKERS = MARKERS.map(mv => {
     id: m.id, name: m.name, system: m.system, systemLabel: SYSTEM_LABEL[m.system], state: L.state,
     // no clinic target: one fixed lane mid-ring (depth would otherwise read as "nearly optimal")
     closeness: L.state === 'in_range' && !hasTarget ? 0.5 : bullseyeCloseness(mv.bands, L.value, ord), valueText: valText(mv, L), unit: u,
-    hollow: L.state === 'in_range' && !hasTarget, once: m.oncePerLifetime, priority: null, note,
+    hollow: L.state === 'in_range' && !hasTarget, hasTarget, once: m.oncePerLifetime, priority: null, note,
     prev: Pv ? { state: Pv.state, closeness: Pv.state === 'in_range' && !hasTarget ? 0.5 : bullseyeCloseness(mv.bands, Pv.value, ord) } : null,
+    /* every exam, not just the last two, so the chart can be walked through the
+       whole history. A year the marker was not drawn holds null and the dot
+       simply stays where it was. */
+    series: EXAM_DATES.map(d => {
+      const pt = mv.points.find(x => x.examDate === d);
+      if (!pt || pt.value == null) return null;
+      return { state: pt.state, closeness: pt.state === 'in_range' && !hasTarget ? 0.5 : bullseyeCloseness(mv.bands, pt.value, ord) };
+    }),
   };
 });
 function mountTarget() {
@@ -7913,18 +8040,76 @@ function mountTargetHero() {
     onSystem: id => focusSystem(focusSys === id ? null : id, 'target'),
   });
   bx = bxHero;                                  // the ledger and sheets drive the same chart
+
+  /* The chart's position in time has one source of truth: the scrubber's value.
+     Scrolling writes to it, dragging writes to it, and only it moves the dots.
+     Scroll still only covers the last leg - previous exam to today - because
+     that is the story the hero tells; the handle is there to walk the rest. */
+  const NX = EXAM_DATES.length;
+  const scrub = $('#sbIn'), fill = $('#sbFill'), marks = $$('.th-scrub .sb-y');
   const yrs = $$('#thYr span');
-  let r2 = 0, lastK = -1;
+  let held = false, lastK = -1;
+  const paint = f => {
+    if (bxHero.setFrame) bxHero.setFrame(f); else if (bxHero.setYear) bxHero.setYear(f);
+    const u = NX > 1 ? clamp(f / (NX - 1), 0, 1) : 1;
+    if (fill) fill.style.transform = `scaleX(${u.toFixed(4)})`;
+    const near = Math.round(f);
+    if (near !== lastK) {
+      lastK = near;
+      marks.forEach((m, i) => m.classList.toggle('on', i === near));
+      yrs.forEach((y, i) => y.classList.toggle('on', i === near));
+      if (scrub) scrub.setAttribute('aria-valuetext', formatYear(EXAM_DATES[clamp(near, 0, NX - 1)]));
+    }
+  };
+  const setFrom = f => { if (scrub) scrub.value = String(f); paint(f); };
+  if (scrub) {
+    scrub.addEventListener('input', () => { paint(parseFloat(scrub.value)); });
+    scrub.addEventListener('pointerdown', () => { held = true; });
+    scrub.addEventListener('focus', () => { held = true; });
+    scrub.addEventListener('blur', () => { held = false; });
+    /* A fine step makes the drag smooth and the keyboard useless - at 0.01 an
+       arrow key is a hundredth of a year. Arrows move a whole assessment. */
+    scrub.addEventListener('keydown', e => {
+      const cur = parseFloat(scrub.value);
+      let to = null;
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowDown' || e.key === 'PageDown') to = Math.ceil(cur - 1);
+      else if (e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'PageUp') to = Math.floor(cur + 1);
+      else if (e.key === 'Home') to = 0;
+      else if (e.key === 'End') to = NX - 1;
+      if (to === null) return;
+      e.preventDefault();
+      setFrom(clamp(to, 0, NX - 1));
+    });
+    /* Let go between two assessments and the chart is showing a moment that
+       never happened. Settle onto the nearer one. */
+    const settle = () => {
+      if (!held) return;
+      held = false;
+      const cur = parseFloat(scrub.value), to = clamp(Math.round(cur), 0, NX - 1);
+      if (Math.abs(cur - to) < 0.004) { setFrom(to); return; }
+      const t0 = cur, d = to - t0;
+      let k = 0;
+      const step = () => {
+        k += 0.14;
+        const e2 = k >= 1 ? 1 : 1 - Math.pow(1 - k, 3);
+        setFrom(t0 + d * e2);
+        if (k < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    };
+    addEventListener('pointerup', settle, { passive: true });
+    addEventListener('pointercancel', settle, { passive: true });
+  }
+
+  let r2 = 0;
   const onScroll = () => {
     r2 = 0;
     const t = scanTrack.getBoundingClientRect(), Z = zoomK();
     const span = t.height - scanFrame.offsetHeight * Z;
     const p = span > 8 ? clamp(-t.top / span, 0, 1) : (t.top < 0 ? 1 : 0);
-    // the first three fifths turn the year; the rest hands off to priority one
+    // the first three fifths turn the year; the rest hands off to the copy
     const yr = clamp(p / 0.6, 0, 1);
-    if (bxHero.setYear) bxHero.setYear(yr);
-    const k = yr >= 0.5 ? 1 : 0;
-    if (k !== lastK) { lastK = k; yrs.forEach((y, i) => y.classList.toggle('on', i === k)); }
+    if (!held) setFrom(NX > 1 ? (NX - 2) + yr : 0);
     const b = clamp((p - 0.66) / 0.2, 0, 1);
     scanCopy.style.setProperty('--b', (b * b * (3 - 2 * b)).toFixed(3));
     scanCopy.dataset.state = b > 0.5 ? 'B' : 'A';
@@ -7934,10 +8119,10 @@ function mountTargetHero() {
   };
   addEventListener('scroll', () => { if (!r2) r2 = requestAnimationFrame(onScroll); }, { passive: true });
   addEventListener('resize', () => { if (!r2) r2 = requestAnimationFrame(onScroll); });
-  addEventListener('beforeprint', () => { if (bxHero.setYear) bxHero.setYear(1); });
+  addEventListener('beforeprint', () => { setFrom(NX - 1); });
   addEventListener('afterprint', onScroll);
   if (matchMedia) { const mq = matchMedia('print');
-    if (mq.addEventListener) mq.addEventListener('change', e => { if (bxHero.setYear) bxHero.setYear(e.matches ? 1 : 0); if (!e.matches) onScroll(); }); }
+    if (mq.addEventListener) mq.addEventListener('change', e => { if (e.matches) setFrom(NX - 1); else onScroll(); }); }
   onScroll();
 }
 function mountRingsHero() {

@@ -356,7 +356,7 @@ canvas.sc-poster{transition:opacity .3s linear}
   .ps-f{margin:8mm 0 0;padding-top:2.5mm;border-top:1px solid #DDDCDB;font-size:8.5pt;color:#666}
   .scan-track{height:auto!important}
   .scan-frame{position:static!important;height:auto!important;background:#fff!important;overflow:visible!important}
-  .scan-stage,.sample-stage,.rg-wrap,.sample-legend,.sc-cB,.th-yr,.th-hint,.th-hatch{display:none!important}
+  .scan-stage,.sample-stage,.rg-wrap,.sample-legend,.sc-cB,.th-yr,.th-scrub,.th-hint,.th-hatch{display:none!important}
   .s-thero .th-fig{position:static!important;display:block!important;inset:auto!important;margin:4mm auto 0!important}
   .s-thero .th-chart{width:min(112mm,100%)!important;margin-inline:auto}
   .s-thero .th-cap{display:block!important;padding:0!important}
@@ -516,6 +516,23 @@ html.tv .s-thero h1{font-size:44px}
 .s-thero .th-yr span{color:var(--ink-muted);opacity:.55}
 .s-thero .th-yr span.on{color:var(--ink-strong);opacity:1}
 .s-thero .th-yr i{background:var(--bone-3)}
+/* the scrubber: a real range input, invisible, over a drawn rail */
+.th-scrub{position:relative;display:block;width:min(300px,42vw);height:40px;flex:none;margin-inline:18px}
+.th-scrub .sb-rail{position:absolute;left:0;right:0;top:7px;height:2px;border-radius:2px;background:var(--bone-3)}
+.th-scrub .sb-fill{position:absolute;left:0;top:0;bottom:0;width:100%;border-radius:2px;background:var(--forest);transform-origin:left;transition:none}
+.th-scrub .sb-marks{position:absolute;left:0;right:0;top:24px;display:block;height:14px}
+.th-scrub .sb-y{position:absolute;left:var(--p);transform:translateX(-50%);font:600 11px/1 var(--sans);letter-spacing:.08em;color:var(--ink-muted);white-space:nowrap;transition:color .25s var(--ease)}
+.th-scrub .sb-y.on{color:var(--ink-strong)}
+.th-scrub input{position:absolute;left:-8px;right:-8px;top:-4px;width:calc(100% + 16px);height:24px;margin:0;padding:0;background:none;-webkit-appearance:none;appearance:none;cursor:ew-resize}
+.th-scrub input:focus{outline:none}
+.th-scrub input:focus-visible{outline:2px solid var(--focus);outline-offset:3px;border-radius:12px}
+.th-scrub input::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--forest);box-shadow:0 0 0 3.5px var(--cream),0 1px 4px rgba(44,78,37,.28);cursor:ew-resize;transition:transform .14s var(--ease)}
+.th-scrub input::-moz-range-thumb{width:15px;height:15px;border:none;border-radius:50%;background:var(--forest);box-shadow:0 0 0 3.5px var(--cream),0 1px 4px rgba(44,78,37,.28);cursor:ew-resize}
+.th-scrub input:hover::-webkit-slider-thumb,.th-scrub input:active::-webkit-slider-thumb{transform:scale(1.18)}
+.th-scrub input:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px var(--cream),0 0 0 6px var(--focus)}
+.th-scrub input:focus-visible::-moz-range-thumb{box-shadow:0 0 0 3px var(--cream),0 0 0 6px var(--focus)}
+@media (max-width:640px){.th-scrub{width:min(200px,46vw);margin-inline:14px}.th-scrub .sb-y{font-size:10px;letter-spacing:.05em}}
+@media print{.th-scrub{display:none!important}}
 .s-thero .sc-next{color:var(--ink-strong);border-bottom-color:rgba(44,78,37,.4)}
 .s-thero .sc-next:hover{border-bottom-color:var(--forest)}
 .s-thero .sc-next .sc-nk{color:var(--forest)}

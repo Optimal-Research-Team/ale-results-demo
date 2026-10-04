@@ -442,6 +442,25 @@ const R_AT = [0.50, 0.685, 0.87];                       // ring radius per year,
    vector, so it is exact on a 75-inch screen and on a 360 px phone with no
    mesh, photograph, video or fallback behind it. Scrolling turns the year.
    The copy is deliberately spare: the chart already says 33 of 39. */
+/* The years, as something you can walk through rather than only read. A real
+   range input does the keyboard, the screen reader and the touch target for us;
+   the rail and the year marks are drawn around it. With only one assessment
+   there is nothing to walk, so it stays the plain pair of labels. */
+function scrubUI() {
+  const n = EXAM_DATES.length;
+  const yrs = EXAM_DATES.map(d => formatYear(d));
+  if (n < 2) return `<span class="th-yr" id="thYr" aria-hidden="true"><span class="on">${esc(yrs[0] || '')}</span></span>`;
+  const marks = yrs.map((y, i) => `<span class="sb-y" style="--p:${n > 1 ? (i / (n - 1)) * 100 : 0}%" data-i="${i}">${esc(y)}</span>`).join('');
+  return `<span class="th-scrub" id="thScrub">
+    <span class="sb-rail" aria-hidden="true"><i class="sb-fill" id="sbFill"></i></span>
+    <span class="sb-marks" aria-hidden="true">${marks}</span>
+    <label class="sr" for="sbIn">Move through your assessments, ${esc(yrs[0])} to ${esc(yrs[n - 1])}</label>
+    <input id="sbIn" type="range" min="0" max="${n - 1}" step="0.01" value="${n - 1}"
+      aria-valuetext="${esc(yrs[n - 1])}" list="sbTicks">
+    <datalist id="sbTicks">${yrs.map((y, i) => `<option value="${i}" label="${esc(y)}"></option>`).join('')}</datalist>
+  </span>`;
+}
+
 function targetHero() {
   // the hero's second beat is the result furthest from target, taken from the
   // data rather than from anything the clinic has to write
@@ -451,7 +470,7 @@ function targetHero() {
     <canvas class="th-hatch" id="thHatch" aria-hidden="true"></canvas>
     <figure class="th-fig">
       <div class="th-chart" id="bxHero"></div>
-      <figcaption class="th-cap"><span class="th-yr" id="thYr" aria-hidden="true"><span class="on">${esc(PREV_YEAR)}</span><i></i><span>${esc(YEAR)}</span></span>
+      <figcaption class="th-cap">${scrubUI()}
         <span class="th-hint"><span class="tp">Tap</span><span class="hv">Select</span> a dot for its history</span></figcaption>
     </figure>
     <div class="scan-copy" data-state="A">
@@ -1534,7 +1553,10 @@ document.addEventListener('click', e => {
   const gp = e.target.closest('[data-grp]'); if (gp) { const box = gp.closest('.grp-w'); setGroup(box, box.dataset.open !== 'true'); syncXall(); return; }
   if (e.target.closest('#xall')) { const open = !$('#xall').dataset.all; $$('.grp-w', $('#rows')).forEach(b => setGroup(b, open)); syncXall(); keepLedgerInView(); return; }
   const p = e.target.closest('[data-prio]'); if (p) {
-    if (MQ.phone.matches) { openDrawer({ context: 'priority', i: +p.dataset.prio }); return; }
+    if (MQ.phone.matches) {
+      const mv = ATTENTION[+p.dataset.prio];
+      if (mv) { openDrawer(mv.marker.id); return; }
+    }
     const box = p.closest('.prio'), open = box.dataset.open !== 'true'; setOpen(box, p, open); if (open) glide(box); else $$('.pk-rb .rb', box).forEach(layRB); return;
   }
   const wd = e.target.closest('.wwd'); if (wd) { const pr = wd.closest('.prio'); pr.classList.add('wwd-on'); wd.setAttribute('aria-expanded', 'true'); const pt = $('.plan-t', pr); if (pt) { pt.tabIndex = -1; pt.focus({ preventScroll: true }); } return; }

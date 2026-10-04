@@ -129,6 +129,9 @@ function renderBullseye(el, opts) {
 .bx-rings,.bx-bounds,.bx-keys,.bx-cmp,.bx-dots,.bx-labs{transition:translate .5s cubic-bezier(.2,.7,.2,1)}
 .bx-par .bx-rings,.bx-par .bx-bounds,.bx-par .bx-keys,.bx-par .bx-cmp,.bx-par .bx-dots,.bx-par .bx-labs{transition:none}
 .bx-rm .bx-rings,.bx-rm .bx-bounds,.bx-rm .bx-keys,.bx-rm .bx-cmp,.bx-rm .bx-dots,.bx-rm .bx-labs{translate:none}
+.bx-ghosts{transition:opacity .45s cubic-bezier(.2,.7,.2,1)}
+.bx-ghosts.off{opacity:0}
+.bx-rm .bx-ghosts{transition:none}
 .bx-dot{cursor:pointer;outline:none;transition:opacity .28s cubic-bezier(.2,.7,.2,1)}
 .bx-dot .fr,.bx-dot .sel{opacity:0;transition:opacity .16s}
 .bx-dot:focus-visible .fr{opacity:1}
@@ -201,6 +204,8 @@ function renderBullseye(el, opts) {
 
   /* ---------- data ---------- */
   const markersIn = (opts.markers || []).filter(m => m && ORDER.includes(m.state));
+  // how many exams the markers carry between them; 1 means no history to walk
+  const EXAMS = markersIn.reduce((n, m) => Math.max(n, (m.series && m.series.length) || 0), 0) || 1;
   const sysIn = (opts.systems || []).slice();
   markersIn.forEach(m => { if (!sysIn.some(s => s.id === m.system)) sysIn.push({ id: m.system, label: m.systemLabel || m.system }); });
   const SYS = sysIn.map(s => ({ id: s.id, label: s.label, short: s.short || SHORT[s.id] || String(s.label).split(/\s+/)[0],
@@ -304,6 +309,23 @@ function renderBullseye(el, opts) {
     });
     relax(pos);
     pos.forEach(p => { const q = P(p.r, p.ang); p.x = q[0]; p.y = q[1]; });
+    /* one position per exam in the marker's history, so walking the years is a
+       lookup rather than a solve. Relaxation is only applied to the present, so
+       earlier frames can overlap a little - they are a passage, not a reading. */
+    pos.forEach((p, i) => {
+      const ser = DOTS[i].m.series;
+      if (!ser || ser.length < 2) { p.frames = null; return; }
+      const hol = !!DOTS[i].m.hollow;
+      p.frames = ser.map(f => {
+        if (!f) return null;
+        const h = hol && f.state === 'in_range';
+        const q = P(radial(f.state, f.closeness, h), p.ang);
+        return { x: q[0], y: q[1], state: f.state };
+      });
+      // the last frame is the present, which relax() may have nudged
+      const last = p.frames.length - 1;
+      if (p.frames[last]) { p.frames[last].x = p.x; p.frames[last].y = p.y; }
+    });
     /* OPTIMAL joins the key only where it clears every optimal dot near 12 o'clock */
     {
       const k0 = keys[0], band0 = rr[1] + 3, band1 = rr[2] - keyCap - 3;
@@ -400,6 +422,25 @@ function renderBullseye(el, opts) {
     });
     cmp += '</g>';
     out.push(cmp);
+
+    /* Where target is. For every marker outside the optimal ring, an open dot on
+       its own spoke at the edge of that ring, joined to where the result
+       actually sits. Nothing is predicted: the ring is the clinic's target and
+       the marker's angle is its own, so this is the same two facts the chart
+       already shows, drawn as a distance. */
+    let ghosts = `<g class="bx-ghosts" aria-hidden="true">`;
+    pos.forEach((p, i) => {
+      const m = DOTS[i].m;
+      if (!m.hasTarget || m.hollow || (m.state !== 'borderline' && m.state !== 'out_of_range')) return;
+      const rT = radial('optimal', 0, false), q = P(rT, p.ang);
+      const dx = q[0] - p.x, dy = q[1] - p.y, L = Math.hypot(dx, dy);
+      if (L < p.dr + 9) return;                       // already as good as there
+      const ux = dx / L, uy = dy / L, g0 = p.dr + 3.5, g1 = L - (DR * 0.62 + 3.5);
+      ghosts += `<path d="M${f1(p.x + ux * g0)} ${f1(p.y + uy * g0)}L${f1(p.x + ux * g1)} ${f1(p.y + uy * g1)}" stroke="${PAL.dot[m.state]}" stroke-opacity=".34" stroke-width="1" stroke-dasharray="1.5 2.6" fill="none"/>`
+        + `<circle cx="${f1(q[0])}" cy="${f1(q[1])}" r="${f1(DR * 0.62)}" fill="none" stroke="${PAL.dot[m.state]}" stroke-opacity=".62" stroke-width="1.2"/>`;
+    });
+    ghosts += '</g>';
+    out.push(ghosts);
 
     out.push(`<line class="bx-spoke" x1="${f1(cx)}" y1="${f1(cy)}" x2="${f1(cx)}" y2="${f1(cy)}" stroke="${PAL.spoke}" stroke-width="1" stroke-linecap="round"/>`);
 
@@ -823,8 +864,47 @@ function renderBullseye(el, opts) {
     /* setYear(t): 0 is the previous exam, 1 is this one. Dots travel between
        the positions they already hold, their state flips at the midpoint, and
        the centre count counts with them. */
+    /* Walk the chart through the whole history. f is a float index into the
+       exam list, so 0 is the first assessment and N-1 is today; 1.5 is halfway
+       between the second and third. A marker not measured in a given year holds
+       its last known position rather than jumping to the middle. */
+    setFrame(f) {
+      const n = EXAMS;
+      if (n < 2) return;
+      const u = f < 0 ? 0 : f > n - 1 ? n - 1 : f;
+      const a = Math.floor(u), b = Math.min(n - 1, a + 1), k = u - a;
+      let lit = 0;
+      dotEls.forEach((g, i) => {
+        if (!g) return;
+        const p = pos[i], fr = p.frames;
+        let x = p.x, y = p.y, st = DOTS[i].m.state;
+        if (fr) {
+          // the nearest measured frame at or before each end of the span
+          const at = j => { for (let q = j; q >= 0; q--) if (fr[q]) return fr[q]; return null; };
+          const A = at(a), B = at(b);
+          if (A && B) { x = A.x + (B.x - A.x) * k; y = A.y + (B.y - A.y) * k; st = k < 0.5 ? A.state : B.state; }
+          else if (A) { x = A.x; y = A.y; st = A.state; }
+        }
+        g.style.transform = `translate(${f1(x)}px,${f1(y)}px)`;
+        if (g.dataset.st !== st) {
+          g.dataset.st = st;
+          g.setAttribute('class', `bx-dot s-${st}${g.classList.contains('on') ? ' on' : ''}`);
+          g.querySelectorAll('circle[fill]:not([fill="transparent"]):not([fill="none"])').forEach(c => c.setAttribute('fill', PAL.dot[st]));
+        }
+        if (st === 'optimal') lit++;
+      });
+      setCount(lit);
+      const live = u > n - 1.015;
+      // the trails compare the last two exams only; walking back through earlier
+      // years they would point at a future that has not happened yet
+      const onLeg = u > n - 2 && !live;
+      const cmp = svg.querySelector('.bx-cmp'); if (cmp) cmp.classList.toggle('on', onLeg);
+      const gh = svg.querySelector('.bx-ghosts'); if (gh) gh.classList.toggle('off', !live);
+    },
+    /* the scroll handler drives only the last leg, prev -> today */
     setYear(t) {
       const k = t < 0 ? 0 : t > 1 ? 1 : t;
+      if (EXAMS >= 2) return this.setFrame(EXAMS - 2 + k);
       let n = 0;
       dotEls.forEach((g, i) => {
         if (!g) return;
