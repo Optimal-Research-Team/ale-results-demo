@@ -327,29 +327,85 @@ function lineChart(mv, { w, h, variant = 'card' } = {}) {
 /* Ledger "since 2025" sparkline: 56×20, the line plus a dashed reference at
    the nearest target edge only when today's value sits outside it. */
 const TREND = { improved: 'Improved', steady: 'Steady', worsened: 'Further from target', new: 'New' };
+/* The goal band is the shared ground of every sparkline.
+   It used to scale each chart to its own values and draw the band only as a
+   dashed hairline, and only when the latest value sat outside it - so for the
+   33 of 39 markers at or inside target there was no reference mark at all, and
+   the column was 39 incomparable squiggles. The band is now a fixed strip in
+   the same place in every box, and each marker is scaled into it: at a glance
+   the column reads as "where does this one sit against its own target", and two
+   rows can be compared without reading either axis.
+   Outside the strip values compress rather than clamp, so a result far out
+   still shows movement instead of pinning to the edge. */
 function spark(mv) {
-  const W = 56, H = 20;
+  const W = 56, H = 20, TOP = 6.5, BOT = 13.5, PAD = 2;
   if (mv.carriedForward) return `<span class="tw tw-once">Once · ${esc(formatYear(mv.latest.examDate))}</span>`;
-  const word = `<span class="tw tw-${mv.trend}">${TREND[mv.trend]}</span>`;
-  if (isOrd(mv)) return `<svg class="sp" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true"><line x1="3" x2="${W - 3}" y1="10" y2="10" stroke="#A9A49B" stroke-width="1.25" stroke-dasharray="1.5 3.5" stroke-linecap="round"/></svg>${word}`;
+  const word = `<span class="tw tw-${mv.trend}">${TREND[mv.trend] || ''}</span>`;
+  const band = (y0, y1, good) => `<rect x="0" y="${y0.toFixed(1)}" width="${W}" height="${(y1 - y0).toFixed(1)}" fill="${good ? 'rgba(44,78,37,.17)' : 'rgba(118,115,109,.09)'}"/>`;
+  const wrap = inner => `<svg class="sp" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">${inner}</svg>${word}`;
+
   const pts = mv.points.filter(p => p.value != null);
-  if (pts.length < 2) return `<span class="sp-none" aria-hidden="true"></span>${word}`;
-  const vs = pts.map(p => p.value), g = goalOf(mv), e = pts[pts.length - 1], s = pts[0];
-  let lo0 = Math.min(...vs), hi0 = Math.max(...vs), edge = null;
-  if (g && !inBand(g, e.value)) {
-    edge = e.value >= g.hi ? g.hi : g.lo;
-    const sp0 = Math.max(hi0 - lo0, Math.abs(hi0) * 0.1);
-    if (edge < lo0 - sp0 * 1.6 || edge > hi0 + sp0 * 1.6) edge = null;
-    else { lo0 = Math.min(lo0, edge); hi0 = Math.max(hi0, edge); }
+  if (!pts.length) return `<span class="sp-none" aria-hidden="true"></span>${word}`;
+
+  /* ordinals have steps, not a scale: the strip is the optimal steps and the
+     dot is the step the patient is on. The old flat dashed line meant nothing. */
+  if (isOrd(mv)) {
+    const st = mv.bands.stepStates, n = st.length;
+    const yOf = k => H - PAD - ((k + 0.5) / n) * (H - PAD * 2);
+    const good = st.map((x, k) => (x === 'optimal' ? k : -1)).filter(k => k >= 0);
+    const strip = good.length
+      ? band(yOf(Math.max(...good)) - (H - PAD * 2) / (n * 2), yOf(Math.min(...good)) + (H - PAD * 2) / (n * 2), true) : '';
+    const cur = mv.latest.value;
+    return wrap(`${strip}<circle cx="${(W / 2).toFixed(1)}" cy="${yOf(cur).toFixed(1)}" r="3.5" fill="${HEX[mv.latest.state]}"/>`);
   }
-  // y-span never smaller than 22% of the marker's visual domain: a steady result draws a nearly flat line
-  const [d0, d1] = mv.bands.domain, minSpan = (d1 - d0) * 0.22, mid = (lo0 + hi0) / 2, span = Math.max((hi0 - lo0) * 1.3, minSpan);
-  const lo = mid - span / 2, hi = mid + span / 2;
-  const X = p => 4 + (EXAM_DATES.indexOf(p.examDate) / (EXAM_DATES.length - 1)) * (W - 8);
-  const Y = v => H - 3 - ((v - lo) / (hi - lo)) * (H - 6);
-  const d = pts.map((p, i) => (i ? 'L' : 'M') + X(p).toFixed(1) + ' ' + Y(p.value).toFixed(1)).join(' ');
-  const ref = edge == null ? '' : `<line x1="0" x2="${W}" y1="${Y(edge).toFixed(1)}" y2="${Y(edge).toFixed(1)}" stroke="${isTarget(g) ? 'rgba(44,78,37,.55)' : 'rgba(118,115,109,.55)'}" stroke-dasharray="2 2"/>`;
-  return `<svg class="sp" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">${ref}<path d="${d}" fill="none" stroke="#474747" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${X(s).toFixed(1)}" cy="${Y(s.value).toFixed(1)}" r="2" fill="#F0EDE5" stroke="#474747" stroke-width="1.25"/><circle cx="${X(e).toFixed(1)}" cy="${Y(e.value).toFixed(1)}" r="3.5" fill="${HEX[e.state]}"/></svg>${word}`;
+
+  const g = goalOf(mv), dom = mv.bands.domain, bl = bandList(mv.bands);
+  if (!g) {
+    // no band to stand on: one hairline floor, the series on it
+    const vs = pts.map(p => p.value), lo = Math.min(...vs), hi = Math.max(...vs);
+    const sp = Math.max(hi - lo, Math.abs(hi) * 0.08) * 1.4 || 1;
+    const mid = (lo + hi) / 2;
+    const Y = v => H / 2 - ((v - mid) / sp) * (H - PAD * 2);
+    return wrap(series(pts, Y, mv));
+  }
+
+  const openLo = g.lo <= dom[0] + 1e-9, openHi = g.open || g.hi >= dom[1] - 1e-9;
+  const gi = bl.findIndex(x => sameBand(x, g));
+  const neighbour = bl[openLo ? gi + 1 : gi - 1];
+  const unit = (!openLo && !openHi) ? (g.hi - g.lo)
+    : (neighbour && isFinite(neighbour.hi - neighbour.lo) ? Math.abs(neighbour.hi - neighbour.lo) : (dom[1] - dom[0]) * 0.25) || 1;
+  const sat = k => k / (k + 1);                       // saturating, never clamped
+
+  let Y, strip;
+  if (!openLo && !openHi) {
+    strip = band(TOP, BOT, isTarget(g));
+    Y = v => v < g.lo ? BOT + sat((g.lo - v) / unit) * (H - PAD - BOT)
+      : v > g.hi ? TOP - sat((v - g.hi) / unit) * (TOP - PAD)
+        : BOT - ((v - g.lo) / (g.hi - g.lo)) * (BOT - TOP);
+  } else if (openLo) {                                 // target is "below x"
+    strip = band(TOP, H, isTarget(g));
+    Y = v => v > g.hi ? TOP - sat((v - g.hi) / unit) * (TOP - PAD)
+      : TOP + sat((g.hi - v) / unit) * (H - TOP);
+  } else {                                             // target is "above x"
+    strip = band(0, BOT, isTarget(g));
+    Y = v => v < g.lo ? BOT + sat((g.lo - v) / unit) * (H - PAD - BOT)
+      : BOT - sat((v - g.lo) / unit) * BOT;
+  }
+  return wrap(strip + series(pts, Y, mv));
+}
+
+/* the series itself: the path when there is history, and always a seated
+   endpoint - a first assessment draws one dot on its band, not an empty box */
+function series(pts, Y, mv) {
+  const W = 56;
+  const e = pts[pts.length - 1], s = pts[0];
+  const n = EXAM_DATES.length;
+  const X = p => (n < 2 ? W / 2 : 4 + (EXAM_DATES.indexOf(p.examDate) / (n - 1)) * (W - 8));
+  const line = pts.length > 1
+    ? `<path d="${pts.map((p, i) => (i ? 'L' : 'M') + X(p).toFixed(1) + ' ' + Y(p.value).toFixed(1)).join(' ')}" fill="none" stroke="#474747" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`
+      + `<circle cx="${X(s).toFixed(1)}" cy="${Y(s.value).toFixed(1)}" r="2" fill="var(--rb-ring,#FFFCF7)" stroke="#474747" stroke-width="1.25"/>`
+    : '';
+  return `${line}<circle cx="${X(e).toFixed(1)}" cy="${Y(e.value).toFixed(1)}" r="3.5" fill="${HEX[e.state]}"/>`;
 }
 
 /* ---------- data for the page ---------- */

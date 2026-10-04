@@ -259,6 +259,12 @@ function renderBullseye(el, opts) {
   const dotR = (st, hollow) => (hollow ? (wide ? 4.2 : 3.8) : attn(st) ? DR * 1.24 : DR);
   let DR = 6;
   const bandOf = st => ORDER.indexOf(st) + 1; // rr[k]..rr[k+1]
+  /* which ring a radius falls in - the inverse of radial(), used while the
+     chart is in motion so a dot's colour always matches where it is */
+  const ringAt = r => {
+    for (let k = 1; k < rr.length - 1; k++) if (r < rr[k + 1]) return ORDER[k - 1];
+    return ORDER[ORDER.length - 1];
+  };
   const radial = (st, c, hollow) => {
     const k = bandOf(st), r0 = rr[k], r1 = rr[k + 1], pad = dotR(st, hollow) + (wide ? 3 : 2.25);
     const lo = r0 + pad, hi = r1 - pad; if (hi <= lo) return (r0 + r1) / 2;
@@ -903,8 +909,10 @@ function renderBullseye(el, opts) {
           // the nearest measured frame at or before each end of the span
           const at = j => { for (let q = j; q >= 0; q--) if (fr[q]) return fr[q]; return null; };
           const A = at(a), B = at(b);
-          if (A && B) { x = A.x + (B.x - A.x) * k; y = A.y + (B.y - A.y) * k; st = k < 0.5 ? A.state : B.state; }
-          else if (A) { x = A.x; y = A.y; st = A.state; }
+          if (A && B) {
+            x = A.x + (B.x - A.x) * k; y = A.y + (B.y - A.y) * k;
+            st = ringAt(Math.hypot(x - cx, y - cy)) || (k < 0.5 ? A.state : B.state);
+          } else if (A) { x = A.x; y = A.y; st = A.state; }
         }
         g.style.transform = `translate(${f1(x)}px,${f1(y)}px)`;
         if (g.dataset.st !== st) {
