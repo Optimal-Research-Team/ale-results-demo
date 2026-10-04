@@ -67,6 +67,13 @@ function countdown(iso) {
   return `In ${Math.round(n / 30.44)} months`;
 }
 /** Borderline and out of range read as chrome chips; optimal and in range as dot + word. */
+/* In the ledger the state column is the strongest vertical on the page and it
+   spends its ink printing "In range" and "Optimal" 33 times, at the same size
+   and in the same slot as the six results the section exists to surface. The
+   pip carries the fine states on screen; the word goes to the screen reader and
+   to print, so nothing is lost where it is read rather than scanned. */
+const rowTag = s => (needs(s) ? stateTag(s)
+  : `<span class="state s-${s} quiet"><span class="dot bg-${s}"></span><span class="st-w">${esc(STATE_LABEL[s])}</span></span>`);
 const stateTag = (s, cls = '') => `<span class="${needs(s) ? 'chip' : 'state'} s-${s}${cls ? ' ' + cls : ''}"><span class="dot bg-${s}"></span>${esc(STATE_LABEL[s])}</span>`;
 const dotWord = s => `<span class="state s-${s}"><span class="dot bg-${s}"></span>${esc(STATE_LABEL[s])}</span>`;
 const arrowVals = (mv, a, b) => `${esc(valText(mv, a))} → ${esc(valText(mv, b))}`;
@@ -1038,7 +1045,7 @@ function rowHTML(m) {
       <span class="vu"><span class="v num">${esc(valText(m, m.latest))}</span><span class="u">${esc(unitOf(m))}</span></span>
       <span class="bar">${rangeBar(m, { size: 'sm' })}</span>
       <span class="tr">${spark(m)}</span>
-      <span class="st">${stateTag(m.latest.state)}</span>
+      <span class="st">${rowTag(m.latest.state)}</span>
       <span class="go" aria-hidden="true">${ICON.arrow}</span>${sr ? `<span class="sr">${esc(sr)}</span>` : ''}</button>`;
 }
 function renderLedger() {

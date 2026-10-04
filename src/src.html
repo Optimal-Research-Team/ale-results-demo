@@ -381,6 +381,8 @@ canvas.sc-poster{transition:opacity .3s linear}
   #priorities,#plan,#note,#target,#progress,#samples,#results{break-before:page}
   .prio,.mv,.grp,.row,.tg-row,.plan-card,.letter,figure,.lc,.vs-cell{break-inside:avoid;page-break-inside:avoid}
   h1,h2,h3,.chap,.p2-h{break-after:avoid;page-break-after:avoid}
+  .row .state.quiet .st-w{position:static!important;width:auto!important;height:auto!important;clip:auto!important;clip-path:none!important}
+  .row .state.quiet{gap:7px}
   .chap::after,.p2-k::after{height:1px!important;background:#DDDCDB!important;-webkit-mask-image:none!important;mask-image:none!important}
   /* the ledger prints complete: every group open, every row */
   .grp-w .clip{height:auto!important;overflow:visible!important}
@@ -1308,7 +1310,7 @@ html.motion .mv.in .lp{transform:none;opacity:1;transition:transform .45s cubic-
 .g-spec{display:inline-flex;align-items:center;gap:2px;max-width:96px;flex:none}
 .g-spec i{width:5px;height:12px;border-radius:1.5px;flex:none}
 .g-c{font-size:13px;color:var(--ink-muted);letter-spacing:0}
-.row{position:relative;isolation:isolate;width:100%;display:grid;grid-template-columns:minmax(0,1.2fr) 60px 52px minmax(0,2.1fr) 112px 124px;column-gap:20px;align-items:center;min-height:64px;padding:12px 0;border-bottom:1px solid var(--hair);text-align:left}
+.row{position:relative;isolation:isolate;width:100%;display:grid;grid-template-columns:minmax(0,1.2fr) 60px 52px minmax(0,2.3fr) 112px 84px;column-gap:20px;align-items:center;min-height:64px;padding:12px 0;border-bottom:1px solid var(--hair);text-align:left}
 .row::before{content:"";position:absolute;inset:0 -12px;z-index:-1;border-radius:4px;background:transparent;transition:background .15s var(--ease)}
 .row:active::before{background:rgba(255,252,247,.7)}
 .row .nm{font-size:15px;font-weight:500;line-height:1.3;color:var(--ink-strong);letter-spacing:-.008em;min-width:0}
@@ -1324,6 +1326,11 @@ html.motion .mv.in .lp{transform:none;opacity:1;transition:transform .45s cubic-
 .tw-improved{color:#1A500F} .tw-worsened{color:#9A5A1C}
 .tw-once{white-space:nowrap}
 .row .st{justify-self:start;padding-right:22px}
+/* the fine states keep their word for a screen reader and for print, and show
+   only their pip on screen - see rowTag() */
+.row .state.quiet .st-w{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
+.row .state.quiet{gap:0}
+.row .state.quiet .dot{width:9px;height:9px}
 .row .st .state{padding:0 9px}
 .row .go{position:absolute;right:0;top:50%;margin-top:-7px;width:14px;height:14px;color:var(--forest);opacity:0;transform:translateX(-4px);transition:opacity .2s var(--ease),transform .2s var(--ease)}
 .row .go svg{display:block}
