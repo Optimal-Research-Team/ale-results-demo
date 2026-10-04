@@ -848,6 +848,13 @@ html.motion .mr.in{clip-path:inset(-16% -8% -26% -8%);transform:none;transition:
 .chap-n::after{content:"";display:inline-block;width:18px;height:1px;margin:0 0 4px 12px;vertical-align:middle;background:rgba(44,78,37,.4)}
 .s-note .chap{margin-bottom:clamp(24px,calc(5 * var(--vw)),64px)}
 .s-prios .chap{margin-bottom:clamp(20px,calc(3 * var(--vw)),40px)}
+/* the frozen group announces itself rather than being silently shuffled down */
+html.motion .prio[data-open="true"] .prio-grid > *{animation:rise .42s var(--ease) both}
+html.motion .prio[data-open="true"] .prio-grid > *:nth-child(2){animation-delay:70ms}
+.att-sub{grid-column:1/-1;margin:38px 0 18px;padding-top:22px;border-top:1px solid var(--hair)}
+.att-sub .eyebrow{margin:0 0 6px;color:var(--ink-muted)}
+.att-sub p{margin:0;font-size:15px;line-height:1.55;color:var(--ink-soft);max-width:54ch}
+.prio.frozen .p-pip{box-shadow:0 0 0 4px var(--cream),0 0 0 5.5px var(--bone-3)}
 
 /* shared animated disclosure */
 .clip{display:grid;grid-template-rows:1fr;transition:grid-template-rows .38s var(--ease)}
@@ -1410,6 +1417,9 @@ html.motion .mv.in .lp{transform:none;opacity:1;transition:transform .45s cubic-
 .dr-in{flex:1 0 auto;padding:12px clamp(20px,calc(4 * var(--vw)),44px) 40px}
 .drawer h2{font:400 clamp(28px,calc(3 * var(--vw)),36px)/1.08 var(--serif);letter-spacing:-.02em}
 .drawer .long{margin:6px 0 0;font-size:15px;color:var(--ink-muted)}
+/* the marker's own one-line description, which shipped in every build and was
+   rendered nowhere */
+.dr-why{margin:14px 0 0;font:400 17px/1.5 var(--serif);letter-spacing:-.005em;color:var(--ink-strong);max-width:34ch}
 .dr-val{display:flex;align-items:baseline;flex-wrap:wrap;row-gap:8px;margin-top:32px}
 .dr-val .v{font:var(--n1);letter-spacing:-.035em;color:var(--ink-strong)}
 .dr-val .u{margin-left:8px;font-size:15px;color:var(--ink-muted);letter-spacing:0}

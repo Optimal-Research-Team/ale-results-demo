@@ -131,7 +131,17 @@ function renderBullseye(el, opts) {
 .bx-rm .bx-rings,.bx-rm .bx-bounds,.bx-rm .bx-keys,.bx-rm .bx-cmp,.bx-rm .bx-dots,.bx-rm .bx-labs{translate:none}
 .bx-ghosts{transition:opacity .45s cubic-bezier(.2,.7,.2,1)}
 .bx-ghosts.off{opacity:0}
+/* the ghosts measure a distance, so they reach out to it rather than appearing:
+   the ring grows from the dot's own leader, one after another, once */
+.bx-ghosts:not(.off) .bx-gh-o{animation:bxGhost .5s cubic-bezier(.2,.8,.25,1) both;animation-delay:calc(var(--i,0) * 55ms + 90ms)}
+.bx-ghosts:not(.off) .bx-gh-l{animation:bxGhostL .4s ease-out both;animation-delay:calc(var(--i,0) * 55ms)}
+@keyframes bxGhost{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes bxGhostL{from{opacity:0}to{opacity:1}}
+.bx-n{transform-origin:center}
+.bx-n.tick{animation:bxTick .42s cubic-bezier(.2,.8,.25,1)}
+@keyframes bxTick{0%{transform:translateY(5px) scale(.94);opacity:.35}60%{transform:translateY(0) scale(1.03)}100%{transform:none;opacity:1}}
 .bx-rm .bx-ghosts{transition:none}
+.bx-rm .bx-gh-o,.bx-rm .bx-gh-l,.bx-rm .bx-n.tick{animation:none}
 .bx-dot{cursor:pointer;outline:none;transition:opacity .28s cubic-bezier(.2,.7,.2,1)}
 .bx-dot .fr,.bx-dot .sel{opacity:0;transition:opacity .16s}
 .bx-dot:focus-visible .fr{opacity:1}
@@ -428,7 +438,7 @@ function renderBullseye(el, opts) {
        actually sits. Nothing is predicted: the ring is the clinic's target and
        the marker's angle is its own, so this is the same two facts the chart
        already shows, drawn as a distance. */
-    let ghosts = `<g class="bx-ghosts" aria-hidden="true">`;
+    let ghosts = `<g class="bx-ghosts" aria-hidden="true">`, nGhost = 0;
     pos.forEach((p, i) => {
       const m = DOTS[i].m;
       if (!m.hasTarget || m.hollow || (m.state !== 'borderline' && m.state !== 'out_of_range')) return;
@@ -436,8 +446,11 @@ function renderBullseye(el, opts) {
       const dx = q[0] - p.x, dy = q[1] - p.y, L = Math.hypot(dx, dy);
       if (L < p.dr + 9) return;                       // already as good as there
       const ux = dx / L, uy = dy / L, g0 = p.dr + 3.5, g1 = L - (DR * 0.62 + 3.5);
-      ghosts += `<path d="M${f1(p.x + ux * g0)} ${f1(p.y + uy * g0)}L${f1(p.x + ux * g1)} ${f1(p.y + uy * g1)}" stroke="${PAL.dot[m.state]}" stroke-opacity=".34" stroke-width="1" stroke-dasharray="1.5 2.6" fill="none"/>`
-        + `<circle cx="${f1(q[0])}" cy="${f1(q[1])}" r="${f1(DR * 0.62)}" fill="none" stroke="${PAL.dot[m.state]}" stroke-opacity=".62" stroke-width="1.2"/>`;
+      const gi = nGhost++;
+      ghosts += `<g class="bx-gh" style="--i:${gi}">`
+        + `<path class="bx-gh-l" d="M${f1(p.x + ux * g0)} ${f1(p.y + uy * g0)}L${f1(p.x + ux * g1)} ${f1(p.y + uy * g1)}" stroke="${PAL.dot[m.state]}" stroke-opacity=".34" stroke-width="1" stroke-dasharray="1.5 2.6" fill="none"/>`
+        + `<circle class="bx-gh-o" cx="${f1(q[0])}" cy="${f1(q[1])}" r="${f1(DR * 0.62)}" fill="none" stroke="${PAL.dot[m.state]}" stroke-opacity=".62" stroke-width="1.2" style="transform-origin:${f1(q[0])}px ${f1(q[1])}px"/>`
+        + `</g>`;
     });
     ghosts += '</g>';
     out.push(ghosts);
@@ -725,7 +738,17 @@ function renderBullseye(el, opts) {
     };
     setCount(0); raf = requestAnimationFrame(tick);
   }
-  function setCount(n) { const t = svg.querySelector('.bx-n'); if (t) t.textContent = n; }
+  let lastCount = null;
+  function setCount(n) {
+    const t = svg.querySelector('.bx-n'); if (!t) return;
+    t.textContent = n;
+    // the number is a tally, and walking the years changes it; a short lift
+    // marks the change so it is not a silent swap
+    if (canAnim && lastCount !== null && lastCount !== n) {
+      t.classList.remove('tick'); void t.getBoundingClientRect(); t.classList.add('tick');
+    }
+    lastCount = n;
+  }
   /* two slow pulses (under 5 s, so no pause control is needed); replays on sector highlight */
   function pulse() {
     if (!canAnim) return;

@@ -41,7 +41,12 @@ function bandList(bands) {
 function goalBand(bands) { const bl = bandList(bands); return bl.find(x => x.state === O) || bl.find(x => x.state === N) || null; }
 function distToGoal(bands, v) { const g = goalBand(bands); if (!g) return 0; return v < g.lo ? g.lo - v : v > g.hi ? v - g.hi : 0; }
 
-const LAST_EXAM = EXAM_DATES[EXAM_DATES.length - 1], PREV_EXAM = EXAM_DATES[EXAM_DATES.length - 2];
+const LAST_EXAM = EXAM_DATES[EXAM_DATES.length - 1];
+/* A first assessment has no previous exam. Falling back to the only one keeps
+   every consumer working; FIRST_EXAM is how the page knows to stop talking
+   about change it cannot show. */
+const FIRST_EXAM = EXAM_DATES.length < 2;
+const PREV_EXAM = FIRST_EXAM ? LAST_EXAM : EXAM_DATES[EXAM_DATES.length - 2];
 
 function buildMarker(d, order) {
   const bands = toBands(d), ordinal = !!d.steps;
@@ -51,8 +56,11 @@ function buildMarker(d, order) {
     return { examDate, value, valueText: ordinal ? raw : null, comparator: null, state: ordinal ? d.stepStates[value] : stateFor(bands, value) };
   }).filter(Boolean);
   const latest = points[points.length - 1];
+  // one lab hiccup and a marker has no value in any exam; it is dropped rather
+  // than taking the whole page down on latest.examDate
+  if (!latest) return null;
   const carriedForward = latest.examDate !== LAST_EXAM;
-  const previous = carriedForward ? null : (points.find(p => p.examDate === PREV_EXAM) || null);
+  const previous = carriedForward || FIRST_EXAM ? null : (points.find(p => p.examDate === PREV_EXAM) || null);
   const mv = {
     marker: { id: d.id, name: d.name, long: d.long, system: d.system, order, precision: d.precision || 0, unit: d.unit,
       direction: 'in_range', copy: { why: d.why, about: d.about }, oncePerLifetime: !!d.once, valueType: ordinal ? 'ordinal' : 'quantity' },
@@ -71,7 +79,7 @@ function trendOf(mv) {
   return d > 0.025 ? 'improved' : d < -0.025 ? 'worsened' : 'steady';
 }
 
-const MARKERS = DEFS.map(buildMarker);
+const MARKERS = DEFS.map(buildMarker).filter(Boolean);
 const BY_ID = Object.fromEntries(MARKERS.map(m => [m.marker.id, m]));
 const SUMMARY = (() => {
   const byState = emptyCounts(), prev = emptyCounts(); let prevTotal = 0;

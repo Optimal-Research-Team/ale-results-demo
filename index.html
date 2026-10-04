@@ -848,6 +848,13 @@ html.motion .mr.in{clip-path:inset(-16% -8% -26% -8%);transform:none;transition:
 .chap-n::after{content:"";display:inline-block;width:18px;height:1px;margin:0 0 4px 12px;vertical-align:middle;background:rgba(44,78,37,.4)}
 .s-note .chap{margin-bottom:clamp(24px,calc(5 * var(--vw)),64px)}
 .s-prios .chap{margin-bottom:clamp(20px,calc(3 * var(--vw)),40px)}
+/* the frozen group announces itself rather than being silently shuffled down */
+html.motion .prio[data-open="true"] .prio-grid > *{animation:rise .42s var(--ease) both}
+html.motion .prio[data-open="true"] .prio-grid > *:nth-child(2){animation-delay:70ms}
+.att-sub{grid-column:1/-1;margin:38px 0 18px;padding-top:22px;border-top:1px solid var(--hair)}
+.att-sub .eyebrow{margin:0 0 6px;color:var(--ink-muted)}
+.att-sub p{margin:0;font-size:15px;line-height:1.55;color:var(--ink-soft);max-width:54ch}
+.prio.frozen .p-pip{box-shadow:0 0 0 4px var(--cream),0 0 0 5.5px var(--bone-3)}
 
 /* shared animated disclosure */
 .clip{display:grid;grid-template-rows:1fr;transition:grid-template-rows .38s var(--ease)}
@@ -1410,6 +1417,9 @@ html.motion .mv.in .lp{transform:none;opacity:1;transition:transform .45s cubic-
 .dr-in{flex:1 0 auto;padding:12px clamp(20px,calc(4 * var(--vw)),44px) 40px}
 .drawer h2{font:400 clamp(28px,calc(3 * var(--vw)),36px)/1.08 var(--serif);letter-spacing:-.02em}
 .drawer .long{margin:6px 0 0;font-size:15px;color:var(--ink-muted)}
+/* the marker's own one-line description, which shipped in every build and was
+   rendered nowhere */
+.dr-why{margin:14px 0 0;font:400 17px/1.5 var(--serif);letter-spacing:-.005em;color:var(--ink-strong);max-width:34ch}
 .dr-val{display:flex;align-items:baseline;flex-wrap:wrap;row-gap:8px;margin-top:32px}
 .dr-val .v{font:var(--n1);letter-spacing:-.035em;color:var(--ink-strong)}
 .dr-val .u{margin-left:8px;font-size:15px;color:var(--ink-muted);letter-spacing:0}
@@ -2490,7 +2500,12 @@ function bandList(bands) {
 function goalBand(bands) { const bl = bandList(bands); return bl.find(x => x.state === O) || bl.find(x => x.state === N) || null; }
 function distToGoal(bands, v) { const g = goalBand(bands); if (!g) return 0; return v < g.lo ? g.lo - v : v > g.hi ? v - g.hi : 0; }
 
-const LAST_EXAM = EXAM_DATES[EXAM_DATES.length - 1], PREV_EXAM = EXAM_DATES[EXAM_DATES.length - 2];
+const LAST_EXAM = EXAM_DATES[EXAM_DATES.length - 1];
+/* A first assessment has no previous exam. Falling back to the only one keeps
+   every consumer working; FIRST_EXAM is how the page knows to stop talking
+   about change it cannot show. */
+const FIRST_EXAM = EXAM_DATES.length < 2;
+const PREV_EXAM = FIRST_EXAM ? LAST_EXAM : EXAM_DATES[EXAM_DATES.length - 2];
 
 function buildMarker(d, order) {
   const bands = toBands(d), ordinal = !!d.steps;
@@ -2500,8 +2515,11 @@ function buildMarker(d, order) {
     return { examDate, value, valueText: ordinal ? raw : null, comparator: null, state: ordinal ? d.stepStates[value] : stateFor(bands, value) };
   }).filter(Boolean);
   const latest = points[points.length - 1];
+  // one lab hiccup and a marker has no value in any exam; it is dropped rather
+  // than taking the whole page down on latest.examDate
+  if (!latest) return null;
   const carriedForward = latest.examDate !== LAST_EXAM;
-  const previous = carriedForward ? null : (points.find(p => p.examDate === PREV_EXAM) || null);
+  const previous = carriedForward || FIRST_EXAM ? null : (points.find(p => p.examDate === PREV_EXAM) || null);
   const mv = {
     marker: { id: d.id, name: d.name, long: d.long, system: d.system, order, precision: d.precision || 0, unit: d.unit,
       direction: 'in_range', copy: { why: d.why, about: d.about }, oncePerLifetime: !!d.once, valueType: ordinal ? 'ordinal' : 'quantity' },
@@ -2520,7 +2538,7 @@ function trendOf(mv) {
   return d > 0.025 ? 'improved' : d < -0.025 ? 'worsened' : 'steady';
 }
 
-const MARKERS = DEFS.map(buildMarker);
+const MARKERS = DEFS.map(buildMarker).filter(Boolean);
 const BY_ID = Object.fromEntries(MARKERS.map(m => [m.marker.id, m]));
 const SUMMARY = (() => {
   const byState = emptyCounts(), prev = emptyCounts(); let prevTotal = 0;
@@ -2692,7 +2710,17 @@ function renderBullseye(el, opts) {
 .bx-rm .bx-rings,.bx-rm .bx-bounds,.bx-rm .bx-keys,.bx-rm .bx-cmp,.bx-rm .bx-dots,.bx-rm .bx-labs{translate:none}
 .bx-ghosts{transition:opacity .45s cubic-bezier(.2,.7,.2,1)}
 .bx-ghosts.off{opacity:0}
+/* the ghosts measure a distance, so they reach out to it rather than appearing:
+   the ring grows from the dot's own leader, one after another, once */
+.bx-ghosts:not(.off) .bx-gh-o{animation:bxGhost .5s cubic-bezier(.2,.8,.25,1) both;animation-delay:calc(var(--i,0) * 55ms + 90ms)}
+.bx-ghosts:not(.off) .bx-gh-l{animation:bxGhostL .4s ease-out both;animation-delay:calc(var(--i,0) * 55ms)}
+@keyframes bxGhost{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes bxGhostL{from{opacity:0}to{opacity:1}}
+.bx-n{transform-origin:center}
+.bx-n.tick{animation:bxTick .42s cubic-bezier(.2,.8,.25,1)}
+@keyframes bxTick{0%{transform:translateY(5px) scale(.94);opacity:.35}60%{transform:translateY(0) scale(1.03)}100%{transform:none;opacity:1}}
 .bx-rm .bx-ghosts{transition:none}
+.bx-rm .bx-gh-o,.bx-rm .bx-gh-l,.bx-rm .bx-n.tick{animation:none}
 .bx-dot{cursor:pointer;outline:none;transition:opacity .28s cubic-bezier(.2,.7,.2,1)}
 .bx-dot .fr,.bx-dot .sel{opacity:0;transition:opacity .16s}
 .bx-dot:focus-visible .fr{opacity:1}
@@ -2989,7 +3017,7 @@ function renderBullseye(el, opts) {
        actually sits. Nothing is predicted: the ring is the clinic's target and
        the marker's angle is its own, so this is the same two facts the chart
        already shows, drawn as a distance. */
-    let ghosts = `<g class="bx-ghosts" aria-hidden="true">`;
+    let ghosts = `<g class="bx-ghosts" aria-hidden="true">`, nGhost = 0;
     pos.forEach((p, i) => {
       const m = DOTS[i].m;
       if (!m.hasTarget || m.hollow || (m.state !== 'borderline' && m.state !== 'out_of_range')) return;
@@ -2997,8 +3025,11 @@ function renderBullseye(el, opts) {
       const dx = q[0] - p.x, dy = q[1] - p.y, L = Math.hypot(dx, dy);
       if (L < p.dr + 9) return;                       // already as good as there
       const ux = dx / L, uy = dy / L, g0 = p.dr + 3.5, g1 = L - (DR * 0.62 + 3.5);
-      ghosts += `<path d="M${f1(p.x + ux * g0)} ${f1(p.y + uy * g0)}L${f1(p.x + ux * g1)} ${f1(p.y + uy * g1)}" stroke="${PAL.dot[m.state]}" stroke-opacity=".34" stroke-width="1" stroke-dasharray="1.5 2.6" fill="none"/>`
-        + `<circle cx="${f1(q[0])}" cy="${f1(q[1])}" r="${f1(DR * 0.62)}" fill="none" stroke="${PAL.dot[m.state]}" stroke-opacity=".62" stroke-width="1.2"/>`;
+      const gi = nGhost++;
+      ghosts += `<g class="bx-gh" style="--i:${gi}">`
+        + `<path class="bx-gh-l" d="M${f1(p.x + ux * g0)} ${f1(p.y + uy * g0)}L${f1(p.x + ux * g1)} ${f1(p.y + uy * g1)}" stroke="${PAL.dot[m.state]}" stroke-opacity=".34" stroke-width="1" stroke-dasharray="1.5 2.6" fill="none"/>`
+        + `<circle class="bx-gh-o" cx="${f1(q[0])}" cy="${f1(q[1])}" r="${f1(DR * 0.62)}" fill="none" stroke="${PAL.dot[m.state]}" stroke-opacity=".62" stroke-width="1.2" style="transform-origin:${f1(q[0])}px ${f1(q[1])}px"/>`
+        + `</g>`;
     });
     ghosts += '</g>';
     out.push(ghosts);
@@ -3286,7 +3317,17 @@ function renderBullseye(el, opts) {
     };
     setCount(0); raf = requestAnimationFrame(tick);
   }
-  function setCount(n) { const t = svg.querySelector('.bx-n'); if (t) t.textContent = n; }
+  let lastCount = null;
+  function setCount(n) {
+    const t = svg.querySelector('.bx-n'); if (!t) return;
+    t.textContent = n;
+    // the number is a tally, and walking the years changes it; a short lift
+    // marks the change so it is not a silent swap
+    if (canAnim && lastCount !== null && lastCount !== n) {
+      t.classList.remove('tick'); void t.getBoundingClientRect(); t.classList.add('tick');
+    }
+    lastCount = n;
+  }
   /* two slow pulses (under 5 s, so no pause control is needed); replays on sector highlight */
   function pulse() {
     if (!canAnim) return;
@@ -5618,6 +5659,7 @@ const unitOf = mv => (isOrd(mv) ? '' : mv.marker.unit);
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const monthDay = iso => { const [, m, d] = ymd(iso); return `${MONTHS[m - 1]} ${d}`; };
 const needs = s => s === 'borderline' || s === 'out_of_range';
+const cap = t => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
 const firstPt = mv => mv.points.find(p => p.value != null);
 const dayNum = iso => { const [y, m, d] = ymd(iso); return Date.UTC(y, m - 1, d) / 864e5; };
 const pad2 = n => String(n).padStart(2, '0');
@@ -5663,7 +5705,11 @@ function distParts(mv) {
   const v = mv.latest.value; if (inBand(g, v)) return null;
   return { n: fmtNum(v < g.lo ? g.lo - v : v - g.hi, mv.marker.precision), u: unitOf(mv), dir: v < g.lo ? 'below' : 'above' };
 }
-const distLine = mv => { const d = distParts(mv); return d ? `${d.n} ${d.u} ${d.dir} target` : ''; };
+/* The noun has to match the band. Eighteen markers have no clinic target and
+   goalWord already calls their band "Lab range"; saying "above target" for them
+   invents a target the clinic never set. */
+const goalNoun = mv => (isTarget(goalOf(mv)) ? 'target' : 'the lab range');
+const distLine = mv => { const d = distParts(mv); return d ? `${d.n} ${d.u} ${d.dir} ${goalNoun(mv)}` : ''; };
 function bandPhrase(mv, x) {
   const [a, b] = mv.bands.domain, p = mv.marker.precision;
   if (x.lo <= a) return `below ${fmtT(x.hi, p)}`;
@@ -6055,13 +6101,13 @@ function targetHero() {
         ${nextVisit()}
       </div>
       ${mv1 ? `<div class="sc-cB" aria-hidden="true">
-        <p class="eyebrow">Furthest from target · ${esc(SYSTEM_LABEL[mv1.marker.system])}</p>
+        <p class="eyebrow">Furthest from ${esc(goalNoun(mv1))} · ${esc(SYSTEM_LABEL[mv1.marker.system])}</p>
         <h2 class="d2">${esc(mv1.marker.name)}</h2>
         <div class="sc-val"><span class="v num">${esc(valText(mv1, mv1.latest))}</span><span class="u">${esc(unitOf(mv1))}</span>${stateTag(mv1.latest.state)}${dp1 ? `<span class="sc-d">${esc(distLine(mv1))}</span>` : ''}</div>
         <div class="sc-blinks"><button type="button" class="sc-why" data-open-marker="${esc(mv1.marker.id)}">See its history ${ICON.arrow}</button><a class="textlink" href="#attention">All ${esc(spell(ATTENTION.length).toLowerCase())} to work on ${ICON.chev}</a></div>
       </div>` : ''}
     </div>
-    ${mv1 ? `<p class="sc-foot"><a href="#attention">Furthest from target · ${esc(mv1.marker.name)} ${ICON.arrow}</a></p>` : ''}
+    ${mv1 ? `<p class="sc-foot"><a href="#attention">Furthest from ${esc(goalNoun(mv1))} · ${esc(mv1.marker.name)} ${ICON.arrow}</a></p>` : ''}
   </div></div>
 </section>`;
 }
@@ -6139,13 +6185,13 @@ function ringsHero() {
         ${nextVisit()}
       </div>
       <div class="sc-cB" aria-hidden="true">
-        <p class="eyebrow">Furthest from target · ${esc(SYSTEM_LABEL[mv1.marker.system])}</p>
+        <p class="eyebrow">Furthest from ${esc(goalNoun(mv1))} · ${esc(SYSTEM_LABEL[mv1.marker.system])}</p>
         <h2 class="d2">${esc(mv1.marker.name)}</h2>
         <div class="sc-val"><span class="v num">${esc(valText(mv1, mv1.latest))}</span><span class="u">${esc(unitOf(mv1))}</span>${stateTag(mv1.latest.state)}${dp1 ? `<span class="sc-d">${esc(distLine(mv1))}</span>` : ''}</div>
         <div class="sc-blinks"><button type="button" class="sc-why" data-open-marker="${esc(mv1.marker.id)}">See its history ${ICON.arrow}</button><a class="textlink" href="#attention">All ${esc(spell(ATTENTION.length).toLowerCase())} to work on ${ICON.chev}</a></div>
       </div>
     </div>
-    <p class="sc-foot"><a href="#attention">Furthest from target · ${esc(mv1.marker.name)} ${ICON.arrow}</a></p>
+    <p class="sc-foot"><a href="#attention">Furthest from ${esc(goalNoun(mv1))} · ${esc(mv1.marker.name)} ${ICON.arrow}</a></p>
   </div></div>
   <p class="sr">${esc(SCAN_SUMMARY)}</p>
 </section>`;
@@ -6193,7 +6239,7 @@ function scanHero() {
         <div class="sc-blinks"><button type="button" class="sc-why" data-open-marker="${esc(mv.marker.id)}">See its history ${ICON.arrow}</button><a class="textlink" href="#attention">All ${esc(spell(ATTENTION.length).toLowerCase())} to work on ${ICON.chev}</a></div>
       </div>
     </div>
-    <p class="sc-foot"><a href="#attention">Furthest from target · ${esc(mv.marker.name)} ${ICON.arrow}</a></p>
+    <p class="sc-foot"><a href="#attention">Furthest from ${esc(goalNoun(mv))} · ${esc(mv.marker.name)} ${ICON.arrow}</a></p>
   </div></div>
   <p class="sr">${esc(SCAN_SUMMARY)}</p>
 </section>`;
@@ -6213,7 +6259,7 @@ const chap = (n, t) => `<p class="chap"><span class="chap-n">${n}</span><span cl
 function srail() {
   return `<nav class="srail" aria-label="Sections"><div class="srail-bar">
     <span class="srail-t">${esc(PRODUCT_NAME)} · ${esc(YEAR)}</span>
-    <div class="srail-in">${RAIL.map(([id, l]) => `<a href="#${id}" data-spy="${id}">${esc(l)}</a>`).join('')}<i class="srail-ind" aria-hidden="true"></i></div>
+    <div class="srail-in"><i class="srail-ind" aria-hidden="true"></i></div>
     <button type="button" class="srail-pdf" data-toast="In the portal this downloads your report as a PDF.">${ICON.dl}Download PDF</button>
   </div></nav>`;
 }
@@ -6293,21 +6339,34 @@ function sinceLine(mv) {
    per patient and still names more than a hand-picked three would. Metrics
    only: a value, where it sits, how far it has to go, what it did. No prose.
    The clinical judgement is already in the ranges; this just reports them. */
+/* A result measured once in a lifetime cannot be worked on, however far out it
+   sits. Sorting purely by distance put Lp(a) - one draw, genetic, "lifestyle
+   barely moves it" - at the head of the list, the hero, the printed page and
+   the first slide of the consult. Frozen results keep their place on the chart
+   and their red chip; they just stop leading a list titled "to work on". */
+const frozen = m => !!(m.carriedForward || m.marker.oncePerLifetime);
 const ATTENTION = MARKERS
   .filter(m => needs(m.latest.state))
-  .sort((a, b) => STATE_RANK[a.latest.state] - STATE_RANK[b.latest.state]
+  .sort((a, b) => (frozen(a) ? 1 : 0) - (frozen(b) ? 1 : 0)
+    || STATE_RANK[a.latest.state] - STATE_RANK[b.latest.state]
     || (distFrac(b) - distFrac(a)));
+const ACTIONABLE = ATTENTION.filter(m => !frozen(m));
+const FROZEN = ATTENTION.filter(frozen);
 
 function attentionSection() {
   if (!ATTENTION.length) return '';
   const rows = ATTENTION.map((mv, i) => {
-    const dp = distParts(mv);
+    const dp = distParts(mv), fz = frozen(mv);
+    // the frozen group announces itself once, before its first card
+    const head = (fz && FROZEN.length && mv === FROZEN[0] && ACTIONABLE.length)
+      ? `<div class="att-sub"><p class="eyebrow">Measured once</p><p>${esc(spell(FROZEN.length))} ${FROZEN.length === 1 ? 'result is' : 'results are'} drawn once in a lifetime. ${FROZEN.length === 1 ? 'It stays' : 'They stay'} on the chart, but ${FROZEN.length === 1 ? 'it is not' : 'they are not'} something the plan moves.</p></div>`
+      : '';
     const hist = mv.points.map((x, k) => `<span class="${k === mv.points.length - 1 ? 'cur' : ''}"><span class="yr">${esc(formatYear(x.examDate))}</span> ${esc(valText(mv, x))}</span>`).join('<span class="ar">→</span>');
     const nc = nextCheckFor(mv);
     // six cards, not three: on a phone they all start closed so the section
     // reads as an index, the same rule the ledger's groups follow
     const open = i === 0 && !MQ.phone.matches;
-    return `<article class="prio" data-open="${open}">
+    return head + `<article class="prio${fz ? ' frozen' : ''}" data-open="${open}">
       <button type="button" class="prio-head" aria-expanded="${open}" aria-controls="pb${i}" data-prio="${i}">
         ${plateImg(mv.marker.system, 'plate-prio')}
         <span class="p-num" aria-hidden="true"><i class="p-pip bg-${mv.latest.state}"></i></span>
@@ -6315,7 +6374,7 @@ function attentionSection() {
         <span class="p-title">${esc(mv.marker.name)}${mv.marker.long ? `<small>${esc(mv.marker.long)}</small>` : ''}</span>
         <span class="prio-peek"><span class="num">${esc(valText(mv, mv.latest))}</span><span class="pk-u">${esc(unitOf(mv))}</span>${stateTag(mv.latest.state)}<span class="pk-rb">${rangeBar(mv, { size: 'sm', target: true })}</span></span>
         ${dp ? `<span class="p-dist s-${mv.latest.state}">${esc(distLine(mv))}</span>` : '<span class="p-dist"></span>'}
-        <span class="p-plan"><b>${esc(trendWord(mv))}</b>${esc(sinceLine(mv))}</span>
+        <span class="p-plan">${fz ? `<b>Measured once</b>in ${esc(formatYear(mv.latest.examDate))}` : `<b>${esc(trendWord(mv))}</b>${esc(sinceLine(mv))}`}</span>
         <span class="chev-w">${ICON.chev}</span>
       </button>
       <div class="clip"><div class="clip-in" id="pb${i}"${open ? '' : ' inert'}><div class="prio-grid">
@@ -6325,7 +6384,8 @@ function attentionSection() {
           <p class="sr">${esc(railSentence(mv, true))}</p>
           ${!isOrd(mv) && mv.points.length > 1 ? `<div class="lc lc-prio" data-chart="${esc(mv.marker.id)}" data-variant="card"></div>` : ''}
           <p class="hist num">${hist}${dp ? `<span class="hd s-${mv.latest.state}">${esc(distLine(mv))}</span>` : ''}</p>
-          ${dp ? `<div class="readout"><span class="rd-l">To reach target</span><span class="rd-v s-${mv.latest.state}"><b class="num">${esc(dp.n)}</b> ${esc(dp.u)} ${dp.dir}</span></div>` : ''}
+          ${dp && !fz ? `<div class="readout"><span class="rd-l">To reach ${esc(goalNoun(mv))}</span><span class="rd-v s-${mv.latest.state}"><b class="num">${esc(dp.n)}</b> ${esc(dp.u)} ${dp.dir}</span></div>` : ''}
+          ${fz ? `<div class="readout"><span class="rd-l">Measured</span><span class="rd-v">once, in <span class="num">${esc(formatYear(mv.latest.examDate))}</span></span></div>` : ''}
         </div>
         <div class="why"><div class="kicker">What it is</div><p>${esc(mv.marker.copy.about)}</p>
           ${nc ? `<a class="p-when" href="#plan"><span class="pw-k">Next measured</span><span class="pw-d num">${esc(formatShortDate(nc.due))}</span><span class="pw-t">${esc(nc.title)}</span>${ICON.arrow}</a>` : ''}
@@ -6338,7 +6398,7 @@ function attentionSection() {
   return `<section id="attention" class="s-prios"><div class="wrap">${chap('Part one', 'What needs attention')}</div><div class="wrap">
     <div class="head split"><div><p class="eyebrow">From your bloodwork on ${esc(COLLECTED)}</p>
     <h2 class="d2">${esc(spell(n))} <span class="ringed"><em>to work on</em><svg class="ring" aria-hidden="true" focusable="false"><ellipse cx="50%" cy="50%" rx="49.3%" ry="47%" pathLength="1"/></svg></span></h2></div>
-    <p class="lede">Every result outside our longevity target, the furthest first. The other <span class="num">${S.total - n}</span> came back where we want them.</p></div>
+    <p class="lede">The furthest from its range first. Of the other <span class="num">${S.total - n}</span>, <span class="num">${S.byState.optimal}</span> ${S.byState.optimal === 1 ? 'is' : 'are'} at our longevity target and <span class="num">${S.byState.in_range}</span> inside the lab's range.</p></div>
     <div class="prios">${rows}</div>
   </div></section>`;
 }
@@ -6518,14 +6578,30 @@ function ledgerShell() {
     </div>
   </div></section>`;
 }
+/* The row draws three pictures - the target band, the value's place in it, two
+   years of movement - and every one of them is aria-hidden. This is the same
+   three facts as a sentence, built from the helpers that draw them. */
+function rowSR(m) {
+  const bits = [];
+  const t = targetText(m);
+  if (t) bits.push(`${goalWord(m)} ${t}${unitOf(m) ? ' ' + unitOf(m) : ''}.`);
+  const d = distLine(m);
+  if (d) bits.push(cap(d) + '.');
+  if (!isOrd(m) && m.previous) {
+    const w = { improved: 'Improved', worsened: 'Moved away', steady: 'Held steady', new: '' }[m.trend];
+    if (w) bits.push(`${w} since ${formatYear(m.previous.examDate)}.`);
+  }
+  return bits.join(' ');
+}
 function rowHTML(m) {
+  const sr = rowSR(m);
   return `<button type="button" class="row${isOrd(m) ? ' ord' : ''}" data-open-marker="${esc(m.marker.id)}">
       <span class="nm">${esc(m.marker.name)}${m.marker.long ? `<small>${esc(m.marker.long)}</small>` : ''}</span>
       <span class="vu"><span class="v num">${esc(valText(m, m.latest))}</span><span class="u">${esc(unitOf(m))}</span></span>
       <span class="bar">${rangeBar(m, { size: 'sm' })}</span>
       <span class="tr">${spark(m)}</span>
       <span class="st">${stateTag(m.latest.state)}</span>
-      <span class="go" aria-hidden="true">${ICON.arrow}</span></button>`;
+      <span class="go" aria-hidden="true">${ICON.arrow}</span>${sr ? `<span class="sr">${esc(sr)}</span>` : ''}</button>`;
 }
 function renderLedger() {
   const phone = MQ.phone.matches;
@@ -6536,7 +6612,8 @@ function renderLedger() {
   $('#sys').innerHTML = `<option value="">${MQ.xs.matches ? 'All' : 'All systems'}</option>` + SYSTEMS.map(s => `<option value="${s.system}"${ui.sys === s.system ? ' selected' : ''}>${esc(s.label)} (${s.markerIds.length})</option>`).join('');
   const f = FILTERS.find(x => x.k === ui.f).fn, q = ui.q.trim().toLowerCase();
   const forced = ui.f !== 'all' || !!ui.sys || !!q;
-  const list = MARKERS.filter(m => f(m) && (!ui.sys || m.marker.system === ui.sys) && (!q || (m.marker.name + ' ' + (m.marker.long || '')).toLowerCase().includes(q)));
+  const hay = m => `${m.marker.name} ${m.marker.long || ''} ${SYSTEM_LABEL[m.marker.system]} ${m.marker.copy.why || ''}`.toLowerCase();
+  const list = MARKERS.filter(m => f(m) && (!ui.sys || m.marker.system === ui.sys) && (!q || hay(m).includes(q)));
   let h = '';
   for (const s of SYSTEMS) {
     const g = list.filter(m => m.marker.system === s.system); if (!g.length) continue;
@@ -6686,6 +6763,18 @@ function signoff() {
    plan answers "what do I do", and Part two is the patient's own exploring. */
 $('#app').innerHTML = (HERO_Q === 'target' ? targetHero() : HERO_Q === 'rings' ? ringsHero() : scanHero()) + printSummary() + srail() + attentionSection() + planCard() + partTwo()
   + note() + (HERO_Q === 'target' ? '' : target()) + moved() + samples() + ledgerShell() + closing() + signoff();
+
+/* The rail is filled from the sections that actually rendered. Deriving it from
+   a list is how "Target" survived the section it pointed at, and how a patient
+   with nothing improved would get a dead "Progress". */
+{
+  const railIn = $('.srail-in'), ind = $('.srail-ind');
+  if (railIn) {
+    railIn.innerHTML = RAIL.filter(([id]) => document.getElementById(id))
+      .map(([id, l]) => `<a href="#${id}" data-spy="${id}">${esc(l)}</a>`).join('');
+    if (ind) railIn.appendChild(ind);
+  }
+}
 renderLedger();
 
 /* ---------- layout pass: charts at real size, rail annotations ---------- */
@@ -6940,7 +7029,9 @@ function openDrawer(arg) {
       <button type="button" class="x" id="drClose" aria-label="Close">${ICON.x}</button></div>
     </div>
     <div class="dr-in">
+      ${plateImg(mv.marker.system, 'plate-dr')}
       <h2 id="drTitle">${esc(name)}</h2>${mv.marker.long ? `<p class="long">${esc(mv.marker.long)}</p>` : ''}
+      ${mv.marker.copy.why ? `<p class="dr-why">${esc(mv.marker.copy.why)}</p>` : ''}
       <div class="dr-val"><span class="v num">${esc(valText(mv, mv.latest))}</span>${unitOf(mv) ? `<span class="u">${esc(unitOf(mv))}</span>` : ''}${stateTag(mv.latest.state)}${mv.carriedForward ? `<span class="once">Measured ${esc(formatYear(mv.latest.examDate))}, once in a lifetime</span>` : ''}</div>
       <div class="dr-rb">${rangeBar(mv, { ticks: true, zones: true })}<p class="sr">${esc(railSentence(mv))}</p></div>
       ${!isOrd(mv) && mv.points.length > 1 ? `<div class="dr-sec"><h3>Your history</h3><div class="lc lc-drawer" data-chart="${esc(mv.marker.id)}" data-variant="drawer"></div></div>` : ''}

@@ -44,6 +44,7 @@ const unitOf = mv => (isOrd(mv) ? '' : mv.marker.unit);
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const monthDay = iso => { const [, m, d] = ymd(iso); return `${MONTHS[m - 1]} ${d}`; };
 const needs = s => s === 'borderline' || s === 'out_of_range';
+const cap = t => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
 const firstPt = mv => mv.points.find(p => p.value != null);
 const dayNum = iso => { const [y, m, d] = ymd(iso); return Date.UTC(y, m - 1, d) / 864e5; };
 const pad2 = n => String(n).padStart(2, '0');
@@ -89,7 +90,11 @@ function distParts(mv) {
   const v = mv.latest.value; if (inBand(g, v)) return null;
   return { n: fmtNum(v < g.lo ? g.lo - v : v - g.hi, mv.marker.precision), u: unitOf(mv), dir: v < g.lo ? 'below' : 'above' };
 }
-const distLine = mv => { const d = distParts(mv); return d ? `${d.n} ${d.u} ${d.dir} target` : ''; };
+/* The noun has to match the band. Eighteen markers have no clinic target and
+   goalWord already calls their band "Lab range"; saying "above target" for them
+   invents a target the clinic never set. */
+const goalNoun = mv => (isTarget(goalOf(mv)) ? 'target' : 'the lab range');
+const distLine = mv => { const d = distParts(mv); return d ? `${d.n} ${d.u} ${d.dir} ${goalNoun(mv)}` : ''; };
 function bandPhrase(mv, x) {
   const [a, b] = mv.bands.domain, p = mv.marker.precision;
   if (x.lo <= a) return `below ${fmtT(x.hi, p)}`;
@@ -481,13 +486,13 @@ function targetHero() {
         ${nextVisit()}
       </div>
       ${mv1 ? `<div class="sc-cB" aria-hidden="true">
-        <p class="eyebrow">Furthest from target · ${esc(SYSTEM_LABEL[mv1.marker.system])}</p>
+        <p class="eyebrow">Furthest from ${esc(goalNoun(mv1))} · ${esc(SYSTEM_LABEL[mv1.marker.system])}</p>
         <h2 class="d2">${esc(mv1.marker.name)}</h2>
         <div class="sc-val"><span class="v num">${esc(valText(mv1, mv1.latest))}</span><span class="u">${esc(unitOf(mv1))}</span>${stateTag(mv1.latest.state)}${dp1 ? `<span class="sc-d">${esc(distLine(mv1))}</span>` : ''}</div>
         <div class="sc-blinks"><button type="button" class="sc-why" data-open-marker="${esc(mv1.marker.id)}">See its history ${ICON.arrow}</button><a class="textlink" href="#attention">All ${esc(spell(ATTENTION.length).toLowerCase())} to work on ${ICON.chev}</a></div>
       </div>` : ''}
     </div>
-    ${mv1 ? `<p class="sc-foot"><a href="#attention">Furthest from target · ${esc(mv1.marker.name)} ${ICON.arrow}</a></p>` : ''}
+    ${mv1 ? `<p class="sc-foot"><a href="#attention">Furthest from ${esc(goalNoun(mv1))} · ${esc(mv1.marker.name)} ${ICON.arrow}</a></p>` : ''}
   </div></div>
 </section>`;
 }
@@ -565,13 +570,13 @@ function ringsHero() {
         ${nextVisit()}
       </div>
       <div class="sc-cB" aria-hidden="true">
-        <p class="eyebrow">Furthest from target · ${esc(SYSTEM_LABEL[mv1.marker.system])}</p>
+        <p class="eyebrow">Furthest from ${esc(goalNoun(mv1))} · ${esc(SYSTEM_LABEL[mv1.marker.system])}</p>
         <h2 class="d2">${esc(mv1.marker.name)}</h2>
         <div class="sc-val"><span class="v num">${esc(valText(mv1, mv1.latest))}</span><span class="u">${esc(unitOf(mv1))}</span>${stateTag(mv1.latest.state)}${dp1 ? `<span class="sc-d">${esc(distLine(mv1))}</span>` : ''}</div>
         <div class="sc-blinks"><button type="button" class="sc-why" data-open-marker="${esc(mv1.marker.id)}">See its history ${ICON.arrow}</button><a class="textlink" href="#attention">All ${esc(spell(ATTENTION.length).toLowerCase())} to work on ${ICON.chev}</a></div>
       </div>
     </div>
-    <p class="sc-foot"><a href="#attention">Furthest from target · ${esc(mv1.marker.name)} ${ICON.arrow}</a></p>
+    <p class="sc-foot"><a href="#attention">Furthest from ${esc(goalNoun(mv1))} · ${esc(mv1.marker.name)} ${ICON.arrow}</a></p>
   </div></div>
   <p class="sr">${esc(SCAN_SUMMARY)}</p>
 </section>`;
@@ -619,7 +624,7 @@ function scanHero() {
         <div class="sc-blinks"><button type="button" class="sc-why" data-open-marker="${esc(mv.marker.id)}">See its history ${ICON.arrow}</button><a class="textlink" href="#attention">All ${esc(spell(ATTENTION.length).toLowerCase())} to work on ${ICON.chev}</a></div>
       </div>
     </div>
-    <p class="sc-foot"><a href="#attention">Furthest from target · ${esc(mv.marker.name)} ${ICON.arrow}</a></p>
+    <p class="sc-foot"><a href="#attention">Furthest from ${esc(goalNoun(mv))} · ${esc(mv.marker.name)} ${ICON.arrow}</a></p>
   </div></div>
   <p class="sr">${esc(SCAN_SUMMARY)}</p>
 </section>`;
@@ -639,7 +644,7 @@ const chap = (n, t) => `<p class="chap"><span class="chap-n">${n}</span><span cl
 function srail() {
   return `<nav class="srail" aria-label="Sections"><div class="srail-bar">
     <span class="srail-t">${esc(PRODUCT_NAME)} · ${esc(YEAR)}</span>
-    <div class="srail-in">${RAIL.map(([id, l]) => `<a href="#${id}" data-spy="${id}">${esc(l)}</a>`).join('')}<i class="srail-ind" aria-hidden="true"></i></div>
+    <div class="srail-in"><i class="srail-ind" aria-hidden="true"></i></div>
     <button type="button" class="srail-pdf" data-toast="In the portal this downloads your report as a PDF.">${ICON.dl}Download PDF</button>
   </div></nav>`;
 }
@@ -719,21 +724,34 @@ function sinceLine(mv) {
    per patient and still names more than a hand-picked three would. Metrics
    only: a value, where it sits, how far it has to go, what it did. No prose.
    The clinical judgement is already in the ranges; this just reports them. */
+/* A result measured once in a lifetime cannot be worked on, however far out it
+   sits. Sorting purely by distance put Lp(a) - one draw, genetic, "lifestyle
+   barely moves it" - at the head of the list, the hero, the printed page and
+   the first slide of the consult. Frozen results keep their place on the chart
+   and their red chip; they just stop leading a list titled "to work on". */
+const frozen = m => !!(m.carriedForward || m.marker.oncePerLifetime);
 const ATTENTION = MARKERS
   .filter(m => needs(m.latest.state))
-  .sort((a, b) => STATE_RANK[a.latest.state] - STATE_RANK[b.latest.state]
+  .sort((a, b) => (frozen(a) ? 1 : 0) - (frozen(b) ? 1 : 0)
+    || STATE_RANK[a.latest.state] - STATE_RANK[b.latest.state]
     || (distFrac(b) - distFrac(a)));
+const ACTIONABLE = ATTENTION.filter(m => !frozen(m));
+const FROZEN = ATTENTION.filter(frozen);
 
 function attentionSection() {
   if (!ATTENTION.length) return '';
   const rows = ATTENTION.map((mv, i) => {
-    const dp = distParts(mv);
+    const dp = distParts(mv), fz = frozen(mv);
+    // the frozen group announces itself once, before its first card
+    const head = (fz && FROZEN.length && mv === FROZEN[0] && ACTIONABLE.length)
+      ? `<div class="att-sub"><p class="eyebrow">Measured once</p><p>${esc(spell(FROZEN.length))} ${FROZEN.length === 1 ? 'result is' : 'results are'} drawn once in a lifetime. ${FROZEN.length === 1 ? 'It stays' : 'They stay'} on the chart, but ${FROZEN.length === 1 ? 'it is not' : 'they are not'} something the plan moves.</p></div>`
+      : '';
     const hist = mv.points.map((x, k) => `<span class="${k === mv.points.length - 1 ? 'cur' : ''}"><span class="yr">${esc(formatYear(x.examDate))}</span> ${esc(valText(mv, x))}</span>`).join('<span class="ar">→</span>');
     const nc = nextCheckFor(mv);
     // six cards, not three: on a phone they all start closed so the section
     // reads as an index, the same rule the ledger's groups follow
     const open = i === 0 && !MQ.phone.matches;
-    return `<article class="prio" data-open="${open}">
+    return head + `<article class="prio${fz ? ' frozen' : ''}" data-open="${open}">
       <button type="button" class="prio-head" aria-expanded="${open}" aria-controls="pb${i}" data-prio="${i}">
         ${plateImg(mv.marker.system, 'plate-prio')}
         <span class="p-num" aria-hidden="true"><i class="p-pip bg-${mv.latest.state}"></i></span>
@@ -741,7 +759,7 @@ function attentionSection() {
         <span class="p-title">${esc(mv.marker.name)}${mv.marker.long ? `<small>${esc(mv.marker.long)}</small>` : ''}</span>
         <span class="prio-peek"><span class="num">${esc(valText(mv, mv.latest))}</span><span class="pk-u">${esc(unitOf(mv))}</span>${stateTag(mv.latest.state)}<span class="pk-rb">${rangeBar(mv, { size: 'sm', target: true })}</span></span>
         ${dp ? `<span class="p-dist s-${mv.latest.state}">${esc(distLine(mv))}</span>` : '<span class="p-dist"></span>'}
-        <span class="p-plan"><b>${esc(trendWord(mv))}</b>${esc(sinceLine(mv))}</span>
+        <span class="p-plan">${fz ? `<b>Measured once</b>in ${esc(formatYear(mv.latest.examDate))}` : `<b>${esc(trendWord(mv))}</b>${esc(sinceLine(mv))}`}</span>
         <span class="chev-w">${ICON.chev}</span>
       </button>
       <div class="clip"><div class="clip-in" id="pb${i}"${open ? '' : ' inert'}><div class="prio-grid">
@@ -751,7 +769,8 @@ function attentionSection() {
           <p class="sr">${esc(railSentence(mv, true))}</p>
           ${!isOrd(mv) && mv.points.length > 1 ? `<div class="lc lc-prio" data-chart="${esc(mv.marker.id)}" data-variant="card"></div>` : ''}
           <p class="hist num">${hist}${dp ? `<span class="hd s-${mv.latest.state}">${esc(distLine(mv))}</span>` : ''}</p>
-          ${dp ? `<div class="readout"><span class="rd-l">To reach target</span><span class="rd-v s-${mv.latest.state}"><b class="num">${esc(dp.n)}</b> ${esc(dp.u)} ${dp.dir}</span></div>` : ''}
+          ${dp && !fz ? `<div class="readout"><span class="rd-l">To reach ${esc(goalNoun(mv))}</span><span class="rd-v s-${mv.latest.state}"><b class="num">${esc(dp.n)}</b> ${esc(dp.u)} ${dp.dir}</span></div>` : ''}
+          ${fz ? `<div class="readout"><span class="rd-l">Measured</span><span class="rd-v">once, in <span class="num">${esc(formatYear(mv.latest.examDate))}</span></span></div>` : ''}
         </div>
         <div class="why"><div class="kicker">What it is</div><p>${esc(mv.marker.copy.about)}</p>
           ${nc ? `<a class="p-when" href="#plan"><span class="pw-k">Next measured</span><span class="pw-d num">${esc(formatShortDate(nc.due))}</span><span class="pw-t">${esc(nc.title)}</span>${ICON.arrow}</a>` : ''}
@@ -764,7 +783,7 @@ function attentionSection() {
   return `<section id="attention" class="s-prios"><div class="wrap">${chap('Part one', 'What needs attention')}</div><div class="wrap">
     <div class="head split"><div><p class="eyebrow">From your bloodwork on ${esc(COLLECTED)}</p>
     <h2 class="d2">${esc(spell(n))} <span class="ringed"><em>to work on</em><svg class="ring" aria-hidden="true" focusable="false"><ellipse cx="50%" cy="50%" rx="49.3%" ry="47%" pathLength="1"/></svg></span></h2></div>
-    <p class="lede">Every result outside our longevity target, the furthest first. The other <span class="num">${S.total - n}</span> came back where we want them.</p></div>
+    <p class="lede">The furthest from its range first. Of the other <span class="num">${S.total - n}</span>, <span class="num">${S.byState.optimal}</span> ${S.byState.optimal === 1 ? 'is' : 'are'} at our longevity target and <span class="num">${S.byState.in_range}</span> inside the lab's range.</p></div>
     <div class="prios">${rows}</div>
   </div></section>`;
 }
@@ -944,14 +963,30 @@ function ledgerShell() {
     </div>
   </div></section>`;
 }
+/* The row draws three pictures - the target band, the value's place in it, two
+   years of movement - and every one of them is aria-hidden. This is the same
+   three facts as a sentence, built from the helpers that draw them. */
+function rowSR(m) {
+  const bits = [];
+  const t = targetText(m);
+  if (t) bits.push(`${goalWord(m)} ${t}${unitOf(m) ? ' ' + unitOf(m) : ''}.`);
+  const d = distLine(m);
+  if (d) bits.push(cap(d) + '.');
+  if (!isOrd(m) && m.previous) {
+    const w = { improved: 'Improved', worsened: 'Moved away', steady: 'Held steady', new: '' }[m.trend];
+    if (w) bits.push(`${w} since ${formatYear(m.previous.examDate)}.`);
+  }
+  return bits.join(' ');
+}
 function rowHTML(m) {
+  const sr = rowSR(m);
   return `<button type="button" class="row${isOrd(m) ? ' ord' : ''}" data-open-marker="${esc(m.marker.id)}">
       <span class="nm">${esc(m.marker.name)}${m.marker.long ? `<small>${esc(m.marker.long)}</small>` : ''}</span>
       <span class="vu"><span class="v num">${esc(valText(m, m.latest))}</span><span class="u">${esc(unitOf(m))}</span></span>
       <span class="bar">${rangeBar(m, { size: 'sm' })}</span>
       <span class="tr">${spark(m)}</span>
       <span class="st">${stateTag(m.latest.state)}</span>
-      <span class="go" aria-hidden="true">${ICON.arrow}</span></button>`;
+      <span class="go" aria-hidden="true">${ICON.arrow}</span>${sr ? `<span class="sr">${esc(sr)}</span>` : ''}</button>`;
 }
 function renderLedger() {
   const phone = MQ.phone.matches;
@@ -962,7 +997,8 @@ function renderLedger() {
   $('#sys').innerHTML = `<option value="">${MQ.xs.matches ? 'All' : 'All systems'}</option>` + SYSTEMS.map(s => `<option value="${s.system}"${ui.sys === s.system ? ' selected' : ''}>${esc(s.label)} (${s.markerIds.length})</option>`).join('');
   const f = FILTERS.find(x => x.k === ui.f).fn, q = ui.q.trim().toLowerCase();
   const forced = ui.f !== 'all' || !!ui.sys || !!q;
-  const list = MARKERS.filter(m => f(m) && (!ui.sys || m.marker.system === ui.sys) && (!q || (m.marker.name + ' ' + (m.marker.long || '')).toLowerCase().includes(q)));
+  const hay = m => `${m.marker.name} ${m.marker.long || ''} ${SYSTEM_LABEL[m.marker.system]} ${m.marker.copy.why || ''}`.toLowerCase();
+  const list = MARKERS.filter(m => f(m) && (!ui.sys || m.marker.system === ui.sys) && (!q || hay(m).includes(q)));
   let h = '';
   for (const s of SYSTEMS) {
     const g = list.filter(m => m.marker.system === s.system); if (!g.length) continue;
@@ -1112,6 +1148,18 @@ function signoff() {
    plan answers "what do I do", and Part two is the patient's own exploring. */
 $('#app').innerHTML = (HERO_Q === 'target' ? targetHero() : HERO_Q === 'rings' ? ringsHero() : scanHero()) + printSummary() + srail() + attentionSection() + planCard() + partTwo()
   + note() + (HERO_Q === 'target' ? '' : target()) + moved() + samples() + ledgerShell() + closing() + signoff();
+
+/* The rail is filled from the sections that actually rendered. Deriving it from
+   a list is how "Target" survived the section it pointed at, and how a patient
+   with nothing improved would get a dead "Progress". */
+{
+  const railIn = $('.srail-in'), ind = $('.srail-ind');
+  if (railIn) {
+    railIn.innerHTML = RAIL.filter(([id]) => document.getElementById(id))
+      .map(([id, l]) => `<a href="#${id}" data-spy="${id}">${esc(l)}</a>`).join('');
+    if (ind) railIn.appendChild(ind);
+  }
+}
 renderLedger();
 
 /* ---------- layout pass: charts at real size, rail annotations ---------- */
@@ -1366,7 +1414,9 @@ function openDrawer(arg) {
       <button type="button" class="x" id="drClose" aria-label="Close">${ICON.x}</button></div>
     </div>
     <div class="dr-in">
+      ${plateImg(mv.marker.system, 'plate-dr')}
       <h2 id="drTitle">${esc(name)}</h2>${mv.marker.long ? `<p class="long">${esc(mv.marker.long)}</p>` : ''}
+      ${mv.marker.copy.why ? `<p class="dr-why">${esc(mv.marker.copy.why)}</p>` : ''}
       <div class="dr-val"><span class="v num">${esc(valText(mv, mv.latest))}</span>${unitOf(mv) ? `<span class="u">${esc(unitOf(mv))}</span>` : ''}${stateTag(mv.latest.state)}${mv.carriedForward ? `<span class="once">Measured ${esc(formatYear(mv.latest.examDate))}, once in a lifetime</span>` : ''}</div>
       <div class="dr-rb">${rangeBar(mv, { ticks: true, zones: true })}<p class="sr">${esc(railSentence(mv))}</p></div>
       ${!isOrd(mv) && mv.points.length > 1 ? `<div class="dr-sec"><h3>Your history</h3><div class="lc lc-drawer" data-chart="${esc(mv.marker.id)}" data-variant="drawer"></div></div>` : ''}
