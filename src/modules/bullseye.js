@@ -135,11 +135,11 @@ function renderBullseye(el, opts) {
 .bx-ghosts:not(.off) .bx-gh-l{animation:bxGhostL .4s ease-out both;animation-delay:calc(var(--i,0) * 55ms)}
 @keyframes bxGhost{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
 @keyframes bxGhostL{from{opacity:0}to{opacity:1}}
-.bx-n{transform-origin:center}
-.bx-n.tick{animation:bxTick .42s cubic-bezier(.2,.8,.25,1)}
+.bx-count-t{transform-origin:center}
+.bx-count-t.tick{animation:bxTick .42s cubic-bezier(.2,.8,.25,1)}
 @keyframes bxTick{0%{transform:translateY(5px) scale(.94);opacity:.35}60%{transform:translateY(0) scale(1.03)}100%{transform:none;opacity:1}}
 .bx-rm .bx-ghosts{transition:none}
-.bx-rm .bx-gh-o,.bx-rm .bx-gh-l,.bx-rm .bx-n.tick{animation:none}
+.bx-rm .bx-gh-o,.bx-rm .bx-gh-l,.bx-rm .bx-count-t.tick{animation:none}
 .bx-dot{cursor:pointer;outline:none;transition:opacity .28s cubic-bezier(.2,.7,.2,1)}
 .bx-dot .fr,.bx-dot .sel{opacity:0;transition:opacity .16s}
 .bx-dot:focus-visible .fr{opacity:1}
@@ -246,6 +246,18 @@ function renderBullseye(el, opts) {
   /* ---------- state ---------- */
   let W = 0, wide = true, dockOn = false, cx = 0, cy = 0, R = 0, rr = [], slot = 0, keyAng = 0, played = !canAnim || opts.autoplay === false;
   let active = -1, hot = -1, sel = -1, hlSys = null, hlState = null, compare = false, anims = [], raf = 0, timers = [], lastPtr = 'mouse', tipVia = 'hover';
+  /* Two things want to highlight a system: the explore pane (sticky, via
+     highlight()) and the pointer (transient). Holding one variable for both
+     meant hovering a wedge had to stash the sticky value and put it back on
+     the way out, with '' and null carrying different meanings. They are kept
+     apart now and hlSys is derived; a hover can never lose the pane's choice. */
+  let stickySys = null, hoverSys = null;
+  function setHl() {
+    const v = hoverSys !== null ? hoverSys : stickySys;
+    if (v === hlSys) return;
+    hlSys = v; if (hlSys) hlState = null;
+    applyState();
+  }
   let dotEls = [], pos = [], labelsBuilt = false;
   const coarse = typeof matchMedia === 'function' && matchMedia('(hover: none)').matches;
 
@@ -385,7 +397,7 @@ function renderBullseye(el, opts) {
     cuts.forEach(g => { rings += `<path d="M${pxy(rr[1] + 0.5, g)}L${pxy(R, g)}" stroke="${PAL.seam}" stroke-width="1" stroke-linecap="butt"/>`; });
     rings += '</g>';
     /* ring boundaries, drawn on entrance (start at 12 o'clock) */
-    const bnd = [[rr[1], PAL.line.core, 1], [rr[2], PAL.line.opt, 1.25], [rr[3], PAL.line.hair, 1], [rr[4], PAL.line.hair, 1], [rr[5], PAL.line.out, 1]];
+    const bnd = [[rr[1], PAL.line.core, 1], [rr[2], PAL.line.opt, 1.75], [rr[3], PAL.line.hair, 1], [rr[4], PAL.line.hair, 1], [rr[5], PAL.line.out, 1]];
     let bounds = `<g class="bx-rings bx-bounds">`;
     bnd.forEach(([r, c, w]) => { bounds += `<circle class="bx-bd" cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(r)}" fill="none" stroke="${c}" stroke-width="${w}" transform="rotate(-90 ${f1(cx)} ${f1(cy)})" data-len="${f1(2 * Math.PI * r)}"/>`; });
     bounds += '</g>';
@@ -421,7 +433,11 @@ function renderBullseye(el, opts) {
       if (subTr > .06) subTr -= .03; else subFs -= .25;
       subY = nFs * .08 + subFs * 1.75;
     }
-    out.push(`<g class="bx-count" aria-hidden="true"><text class="bx-serif bx-n" x="${f1(cx)}" y="${f1(cy + nFs * .08)}" text-anchor="middle" font-size="${f1(nFs)}" fill="${PAL.count}" letter-spacing="-.02em">${COUNT.optimal}</text>` +
+    const denFs = nFs * 0.36;
+    out.push(`<g class="bx-count" aria-hidden="true">`
+      + `<text class="bx-serif bx-count-t" x="${f1(cx)}" y="${f1(cy + nFs * .08)}" text-anchor="middle" font-size="${f1(nFs)}" fill="${PAL.count}" letter-spacing="-.02em">`
+      + `<tspan class="bx-n">${COUNT.optimal}</tspan>`
+      + `<tspan class="bx-den" font-size="${f1(denFs)}" fill="${PAL.countSub}" dx="${f1(denFs * .22)}">of ${DOTS.length}</tspan></text>` +
       `<text x="${f1(cx)}" y="${f1(cy + subY)}" text-anchor="middle" font-size="${f1(subFs)}" font-weight="600" letter-spacing="${f1(subTr)}em" fill="${PAL.countSub}">${H(subTxt)}</text></g>`);
 
     /* compare: last exam ghosts + dashed trails (hidden until setCompare(true)) */
@@ -746,10 +762,12 @@ function renderBullseye(el, opts) {
   function setCount(n) {
     const t = svg.querySelector('.bx-n'); if (!t) return;
     t.textContent = n;
+    // the lift belongs on the <text>; a <tspan> does not reliably take a transform
+    const box = svg.querySelector('.bx-count-t') || t;
     // the number is a tally, and walking the years changes it; a short lift
     // marks the change so it is not a silent swap
     if (canAnim && lastCount !== null && lastCount !== n) {
-      t.classList.remove('tick'); void t.getBoundingClientRect(); t.classList.add('tick');
+      box.classList.remove('tick'); void box.getBoundingClientRect(); box.classList.add('tick');
     }
     lastCount = n;
   }
@@ -774,58 +792,61 @@ function renderBullseye(el, opts) {
   const on = (t, ev, fn, o) => { t.addEventListener(ev, fn, o); offs.push(() => t.removeEventListener(ev, fn, o)); };
   const offs = [];
   on(svg, 'pointerdown', e => { lastPtr = e.pointerType || 'mouse'; });
-  let preview = null;
-  on(svg, 'pointerover', e => {
-    if (e.pointerType !== 'mouse') return;
-    const lh = e.target.closest && e.target.closest('.bx-lhit');
-    if (lh) { if (preview === null) preview = hlSys || ''; hlSys = lh.dataset.s; hlState = null; applyState(); return; }
-    const i = dotIndex(e.target); if (i < 0) return;
-    if (!dockOn) showTip(i, 'hover'); else { hot = i; markHot(); }
-  });
-  on(svg, 'pointerout', e => {
-    if (e.pointerType !== 'mouse') return;
-    const lh = e.target.closest && e.target.closest('.bx-lhit');
-    if (lh && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('.bx-lhit'))) { hlSys = preview || null; preview = null; applyState(); return; }
-    const i = dotIndex(e.target); if (i < 0) return;
-    const to = dotIndex(e.relatedTarget); if (to === i) return;
-    if (document.activeElement === dotEls[i]) return;
-    if (!dockOn) hideTip(); else { hot = sel; markHot(); }
-  });
+
+  /* ---------- mouse hover ----------
+     One handler owns it. It was split across pointerover and pointerout on the
+     dot groups, so the mouse had to land exactly on a 5px circle while a finger
+     got a 28px slop radius through nearest() - the harder target handed to the
+     more precise device, and two code paths to keep in agreement. Proximity now
+     decides for both, the system wedge is read from the same event, and the
+     parallax that already ran on every move shares the handler. */
+  const fine = typeof matchMedia === 'function' && matchMedia('(hover:hover) and (pointer:fine)').matches;
+  const parallax = !RM && fine;
+  let pr = 0, pX = 0, pY = 0, parked = true, hoverI = -1;
+  const applyPar = () => { pr = 0; el.style.setProperty('--bx-px', pX.toFixed(3)); el.style.setProperty('--bx-py', pY.toFixed(3)); };
+
+  function hoverDot(i) {
+    if (i === hoverI) return;
+    hoverI = i;
+    if (dockOn) { hot = i >= 0 ? i : sel; markHot(); return; }
+    if (i >= 0) showTip(i, 'hover');
+    else if (dotIndex(document.activeElement) < 0) hideTip(); // a keyboard tip outlives the pointer
+  }
+
+  if (fine) {
+    on(svg, 'pointermove', e => {
+      if (e.pointerType !== 'mouse') return;
+      const b = svg.getBoundingClientRect(); if (!b.width) return;
+      if (parallax) {
+        pX = clamp(((e.clientX - b.left) / b.width - 0.5) * 2, -1, 1);
+        pY = clamp(((e.clientY - b.top) / b.height - 0.5) * 2, -1, 1);
+        if (parked) { parked = false; el.classList.add('bx-par'); }
+        if (!pr) pr = requestAnimationFrame(applyPar);
+      }
+      const lh = e.target.closest && e.target.closest('.bx-lhit');
+      hoverSys = lh ? lh.dataset.s : null; setHl();
+      // over a system label the whole wedge is the subject, so no single dot is
+      const [x, y] = toSvg(e);
+      hoverDot(lh ? -1 : nearest(x, y, pxToSvg(10)));
+    });
+    on(svg, 'pointerleave', () => {
+      if (parallax) { parked = true; el.classList.remove('bx-par'); pX = pY = 0; if (!pr) pr = requestAnimationFrame(applyPar); }
+      hoverSys = null; setHl(); hoverDot(-1);
+    });
+  }
+
   on(svg, 'click', e => {
     const lab = e.target.closest && e.target.closest('.bx-lhit');
-    if (lab && opts.onSystem) { preview = null; opts.onSystem(lab.dataset.s); return; }
+    if (lab && opts.onSystem) { hoverSys = null; setHl(); opts.onSystem(lab.dataset.s); return; }
     let i = dotIndex(e.target);
     if (lastPtr !== 'mouse') {
       if (i < 0) { const [x, y] = toSvg(e); i = nearest(x, y, pxToSvg(28)); }
       if (i < 0) { if (!dockOn) hideTip(); return; }
       if (dockOn || hot !== i) { active = i; roving(i); showTip(i, 'tap'); return; }
-    }
+    } else if (i < 0) i = hoverI; // open whatever the tooltip is pointing at
     if (i >= 0 && opts.onOpen) opts.onOpen(DOTS[i].m.id);
   });
-  /* Parallax. A few pixels of differential drift as the pointer crosses the
-     chart, enough to separate the rings from the dots. Fine pointers only, and
-     never under reduced motion - a touch device gets nothing. */
-  if (!RM && matchMedia('(hover:hover) and (pointer:fine)').matches) {
-    let pr = 0, pX = 0, pY = 0, parked = true;
-    const apply = () => {
-      pr = 0;
-      el.style.setProperty('--bx-px', pX.toFixed(3));
-      el.style.setProperty('--bx-py', pY.toFixed(3));
-    };
-    on(svg, 'pointermove', e => {
-      if (e.pointerType !== 'mouse') return;
-      const b = svg.getBoundingClientRect(); if (!b.width) return;
-      pX = clamp(((e.clientX - b.left) / b.width - 0.5) * 2, -1, 1);
-      pY = clamp(((e.clientY - b.top) / b.height - 0.5) * 2, -1, 1);
-      if (parked) { parked = false; el.classList.add('bx-par'); }
-      if (!pr) pr = requestAnimationFrame(apply);
-    });
-    on(svg, 'pointerleave', () => {
-      // ease back to centre rather than snapping: drop the no-transition class
-      parked = true; el.classList.remove('bx-par'); pX = pY = 0;
-      if (!pr) pr = requestAnimationFrame(apply);
-    });
-  }
+
   on(svg, 'focusin', e => { const i = dotIndex(e.target); if (i < 0) return; active = i; roving(i); showTip(i, 'key'); });
   on(svg, 'focusout', e => { if (svg.contains(e.relatedTarget)) return; if (!dockOn) hideTip(); });
   on(svg, 'keydown', e => {
@@ -886,8 +907,8 @@ function renderBullseye(el, opts) {
       anims.forEach(a => { try { a.cancel(); } catch (e) { /* noop */ } }); timers.forEach(clearTimeout); cancelAnimationFrame(raf); cancelAnimationFrame(rzRaf);
       el.innerHTML = ''; el.className = prevClass;
     },
-    highlight(systemId) { hlSys = systemId && SYS.some(s => s.id === systemId) ? systemId : null; if (hlSys) hlState = null; applyState(); if (hlSys && SYS.find(s => s.id === hlSys).markers.some(m => m.state === 'out_of_range')) pulse(); },
-    highlightState(state) { hlState = ORDER.includes(state) ? state : null; if (hlState) hlSys = null; applyState(); },
+    highlight(systemId) { stickySys = systemId && SYS.some(s => s.id === systemId) ? systemId : null; setHl(); if (hlSys && SYS.find(s => s.id === hlSys).markers.some(m => m.state === 'out_of_range')) pulse(); },
+    highlightState(state) { hlState = ORDER.includes(state) ? state : null; if (hlState) { stickySys = hoverSys = null; hlSys = null; } applyState(); },
     /* setYear(t): 0 is the previous exam, 1 is this one. Dots travel between
        the positions they already hold, their state flips at the midpoint, and
        the centre count counts with them. */
@@ -924,6 +945,11 @@ function renderBullseye(el, opts) {
         if (st === 'optimal') lit++;
       });
       setCount(lit);
+      if (opts.onFrame) {
+        const by = { optimal: 0, in_range: 0, borderline: 0, out_of_range: 0 };
+        dotEls.forEach(g => { if (g && by[g.dataset.st] !== undefined) by[g.dataset.st]++; });
+        opts.onFrame(by, u);
+      }
       const live = u > n - 1.015;
       // the trails compare the last two exams only; walking back through earlier
       // years they would point at a future that has not happened yet

@@ -335,12 +335,17 @@ canvas.sc-poster{transition:opacity .3s linear}
   html{zoom:1!important}
   /* chrome, controls and anything that only exists to be operated */
   .chrome,.srail,.room,.scrim,.drawer,.toast,.capsule,.sc-stats,.sc-next,.sc-pill,
-  .tabs,.tb1,.tb2,.tb-sub,.toc,.sel-pill,.search,.tb-find,.xall,.pill-cta,
+  .tabs,.tb1,.tb2,.toc,.sel-pill,.syspick,.search,.tb-find,.xall,.pill-cta,
   .vs-idx,.vs-tally,.mv-all,.tg-ctl,.tg-one,.bm-pills,.sc-hint,.sc-rets,.sc-tags,.sc-lead,
   .loop,.bay-rail,.bay-rings,.bay-scan,.rg-yr,.sc-foot,.go,.chev-w,.wwd,
-  [data-toast],[data-sys-list],[data-prio-sheet],[data-bm-go],[data-see]{display:none!important}
+  [data-toast],[data-pdf],[data-sys-list],[data-prio-sheet],[data-bm-go],[data-see]{display:none!important}
   /* the hero prints as a title page: the words, not the render */
-  .s-scan,.s-rings{min-height:0!important;background:#fff!important;color:#111!important}
+  /* On screen the hero tucks up under the fixed chrome: margin-top is minus
+     the chrome height, which puts its top at document y -50. On paper there is
+     no chrome, so that offset lifts the top of the chart clean off the sheet -
+     the page edge was slicing the ascenders off "OUT OF RANGE" and the tail
+     off "Urinalysis", which read as clipped SVG labels. */
+  .s-scan,.s-rings,.s-thero{margin-top:0!important;min-height:0!important;background:#fff!important;color:#111!important}
   /* page one is the sheet a patient keeps: chart, priorities, dates. The
      chart gives up height for them, and the break moves below the summary. */
   .p-sum{display:block!important;break-after:page;break-inside:avoid;padding-top:6mm}
@@ -358,7 +363,12 @@ canvas.sc-poster{transition:opacity .3s linear}
   .scan-frame{position:static!important;height:auto!important;background:#fff!important;overflow:visible!important}
   .scan-stage,.sample-stage,.rg-wrap,.sample-legend,.sc-cB,.th-yr,.th-scrub,.th-hint,.th-hatch{display:none!important}
   .s-thero .th-fig{position:static!important;display:block!important;inset:auto!important;margin:4mm auto 0!important}
-  .s-thero .th-chart{width:min(112mm,100%)!important;margin-inline:auto}
+  /* 11 system names ride a ring outside the plate, and at 112mm the ring has
+     too little circumference for the long ones - "Urinalysis" and
+     "Electrolytes" sit in narrow sectors and the collision pass runs out of
+     room, so they overlap into each other and read as cut off. The page is
+     182mm wide; the chart takes 152mm of it. */
+  .s-thero .th-chart{width:min(108mm,100%)!important;margin-inline:auto}
   .s-thero .th-cap{display:block!important;padding:0!important}
   .s-thero .scan-frame{background:#fff!important}
   .scan-copy,.sc-cA{position:static!important;width:auto!important;inset:auto!important;margin:0!important;
@@ -382,7 +392,10 @@ canvas.sc-poster{transition:opacity .3s linear}
   .prio,.mv,.grp,.row,.tg-row,.plan-card,.letter,figure,.lc,.vs-cell{break-inside:avoid;page-break-inside:avoid}
   h1,h2,h3,.chap,.p2-h{break-after:avoid;page-break-after:avoid}
   .row .state.quiet .st-w{position:static!important;width:auto!important;height:auto!important;clip:auto!important;clip-path:none!important}
-  .row .state.quiet{gap:7px}
+  /* the dot printed flush against its own word and against the trend word
+     before it: rows read "Improved●Optimal" */
+  .row .state,.row .state.quiet{gap:6px!important}
+  .row .st{padding-left:8px}
   .chap::after,.p2-k::after{height:1px!important;background:#DDDCDB!important;-webkit-mask-image:none!important;mask-image:none!important}
   /* the ledger prints complete: every group open, every row */
   .grp-w .clip{height:auto!important;overflow:visible!important}
@@ -397,15 +410,104 @@ canvas.sc-poster{transition:opacity .3s linear}
   .plate{mix-blend-mode:normal!important;filter:none!important;opacity:1!important}
   .rb .z,.rb .base,.t-optimal,.t-in_range,.t-borderline,.t-out_of_range,.dot{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .sp,.lc svg,.rb,.bx-svg{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .row{grid-template-columns:minmax(0,1.3fr) 70px 56px minmax(0,1.6fr) 80px 120px!important;min-height:0;padding:7pt 0}
+  /* the trend cell held a 56px sparkline, an 8px gap and the word, in 80px:
+     "Improved" printed as "Improve" on all 38 rows, the rest painted over by
+     the status chip's opaque ground */
+  .row{grid-template-columns:minmax(0,1.25fr) 66px 56px minmax(0,1.5fr) 112px 118px!important;min-height:0;padding:7pt 0}
   .row .tr{display:flex!important}
   .row .tr .tw{display:inline!important}
   /* the bullseye prints as the summary it is */
   .tg-fig{break-inside:avoid}
   .tg-chart{max-width:150mm;margin-inline:auto}
+  /* The system names sit outside the plate, and an SVG clips to its viewport
+     by default - so on paper the longest of them, "Urinalysis", was cut off
+     mid-word while its shorter neighbours rendered whole. */
+  .bx-svg,.th-chart svg,.tg-chart svg{overflow:visible!important}
+  /* On screen a cream scrim fades the hero copy up over the chart. In print
+     the copy is static and the scrim just paints cream across the top of the
+     plate - slicing the ascenders off "OUT OF RANGE" and the tail off
+     "Urinalysis", which read as clipped labels rather than as something
+     covering them. Same shape of bug as the closing page's slab: a
+     pseudo-element, which no element selector reaches and no DOM walk sees. */
+  .scan-copy::before,.scan-copy::after,.sc-cA::before,.sc-cA::after,
+  .th-fig::before,.th-fig::after{display:none!important;background:none!important}
   .tg-cap{display:block!important;color:#555!important}
   a{color:inherit!important;text-decoration:none!important}
+  /* The key was inside .tb-sub, which print hid wholesale with the toolbar -
+     so ten pages of four-colour range bars went out with nothing naming a
+     single colour. The toolbar's controls still go; the key stays, once,
+     above the ledger it explains. */
+  .tb-sub{display:block!important;margin:0 0 5mm;padding-bottom:2.5mm;border-bottom:1px solid #DDDCDB}
+  .tb-sub .key{display:flex!important;flex-wrap:wrap;gap:4mm 7mm;font-size:9pt;color:#444}
+  .tb-sub .xall{display:none!important}
+  .pr-hide{display:none!important}
+  .pr-only{display:inline!important}
+  /* a system heading must not sit alone at the foot of a page */
+  .grp,.grp-w > .grp{break-after:avoid;page-break-after:avoid;break-inside:avoid}
+  /* identity on every sheet, parked in the gutter so it cannot overprint a row */
+  @page{margin-bottom:24mm}
+  /* Chromium pins a fixed element's box to the same spot in paged media
+     whatever `bottom` says, and that spot is 5.5mm from the paper edge -
+     inside the unprintable border of plenty of desktop printers. Padding
+     inside the pinned box lifts the text to a safe ~11mm instead. */
+  .ps-run{display:flex!important;justify-content:space-between;gap:6mm;
+    position:fixed;left:0;right:0;bottom:0;padding:2.5mm 0 6mm;
+    border-top:1px solid #DDDCDB;background:#fff;
+    font-size:8pt;line-height:1.3;color:#666}
   .textlink,.sc-why{display:none!important}
+  /* Attention cards: each was 620-835pt on a 1002pt page, so exactly one fitted
+     and every sheet from two to seven carried a single card over half a page of
+     air - thirteen pages of mostly nothing. On paper the width is free and the
+     height is not, so the card turns on its side: where you are on the left,
+     what it is on the right, divided by a rule. Two to a page, and the page is
+     full. */
+  .prio-grid{grid-template-columns:1.15fr 1fr!important;align-items:stretch}
+  .prio .inst{padding:14pt 16pt!important}
+  .prio .why{padding:14pt 16pt!important;border-left:1px solid #E0DCD3}
+  .prio .inst .rb{margin-top:14pt!important}
+  .prio .lc-prio{height:66pt!important;margin-top:10pt!important}
+  .prio .lc-prio svg{width:100%!important;height:100%!important}
+  /* The head's "peek" is the collapsed-state preview of the range bar. On
+     paper every card is open and the real bar sits inches below it, so it is
+     duplicate ink - and worse, its auto column was taking 337pt and starving
+     the title's minmax(0,1fr) down to 26pt, wrapping "Blood sugar after an
+     overnight fast" one character per line into a 172pt spike. */
+  .prio-peek{display:none!important}
+  .prio-head{padding:12pt 16pt 10pt 18pt!important;
+    grid-template-columns:34pt minmax(0,1fr) 0 56pt 0!important}
+  .prio .plate-prio{width:46pt!important;height:46pt!important}
+  .prio{break-inside:avoid;page-break-inside:avoid}
+  /* Eight cells were tried here and made it worse: two more rows would not
+     fit, so the overflow broke to a page of its own and the report grew to
+     eleven. Four cells under a full-width heading is a section opener; the
+     white below it is the opener's, not waste. */
+  .s-moved .mv{break-inside:avoid}
+  /* NB: do not clamp .lc svg with max-width. Each chart is drawn at the
+     measured pixel size of its box and a ResizeObserver watches that box, so a
+     width that depends on the rendered SVG feeds back - the charts converge to
+     a sliver, the cards stop pairing and the report went from 10 pages to 17.
+     Size the box, never the drawing. */
+  /* the frozen-marker note rode alone at the foot of a page */
+  .att-sub{break-inside:avoid;break-before:avoid}
+  /* The closing page printed as a half-page slab of dark green - the shore
+     engraving, laid in as a masked background, which survived both the
+     section's white override and display:none on its own class. On paper it
+     is half a cartridge for no information, so every painted surface in the
+     section is stripped and the quote prints as a quote. */
+  .s-close *:not(.close-shore){background-image:none!important}
+  .s-close,.s-close *{box-shadow:none!important}
+  .s-close,.s-close *:not(.foot):not(.foot *){background-color:transparent!important}
+  /* the slab is a ::before scrim, which no element selector and no DOM walk
+     can reach - two stacked gradients over the shore engraving */
+  .s-close::before,.s-close::after{display:none!important;background:none!important}
+  .close-q::before{color:#87A482!important}
+  .s-close .close-q,.s-close .close-q *,.s-close .eyebrow,.s-close p,.s-close b{color:#111!important}
+  .s-close .eyebrow{color:#2C4E25!important}
+  /* the engraving is line art on white - it prints as a drawing and costs
+     almost no ink, so the section keeps enough height to show it under the quote */
+  .s-close{position:relative!important;padding-block:0 56mm!important;min-height:0!important;break-inside:avoid}
+  .s-close .wrap,.s-close .close-wrap{min-height:0!important;padding-block:0!important}
+  .close-q{font-size:19pt!important;line-height:1.2!important;max-width:120mm}
 }
 
 /* ---------- ambient loops ----------
@@ -539,6 +641,39 @@ html.tv .s-thero h1{font-size:44px}
 .s-thero .sc-next:hover{border-bottom-color:var(--forest)}
 .s-thero .sc-next .sc-nk{color:var(--forest)}
 .s-thero .sc-next .sep{color:var(--ink-muted)}
+
+/* the hero's copy, as a card: the three words needed mass, and the tally that
+   lived only in the chart's centre belongs beside them */
+.th-card{background:var(--white);border:1px solid var(--hair);border-radius:10px;
+  padding:clamp(22px,2.2vw,30px) clamp(22px,2.4vw,32px) clamp(20px,2vw,26px);
+  box-shadow:0 1px 2px rgba(44,78,37,.04),0 12px 32px -18px rgba(44,78,37,.22);
+  max-width:400px}
+.s-thero .th-card .eyebrow{margin:0 0 10px;font-size:11.5px;letter-spacing:.13em}
+.s-thero .th-card h1{margin:0;font-size:clamp(34px,3.5vw,50px);line-height:1.04;
+  letter-spacing:-.032em;max-width:none}
+.th-tally{display:grid;grid-template-columns:repeat(3,auto);gap:0 clamp(18px,2.2vw,30px);
+  margin:clamp(18px,2vw,26px) 0 0;padding-top:clamp(16px,1.8vw,22px);
+  border-top:1px solid var(--hair)}
+.th-tally dt{margin:0;font-size:11px;font-weight:600;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--ink-muted);white-space:nowrap}
+.th-tally dd{margin:4px 0 0;font:400 clamp(26px,2.5vw,34px)/1 var(--serif);
+  letter-spacing:-.03em;color:var(--forest);transition:color .3s var(--ease)}
+.th-tally div:last-child dd{color:var(--bor-fg)}
+.th-meta{margin:clamp(14px,1.6vw,20px) 0 0;font-size:13px;line-height:1.5;color:var(--ink-muted)}
+.th-meta b{font-weight:500;color:var(--ink-soft)}
+.th-yrnow{display:block;margin-top:3px;color:var(--forest);font-weight:600;letter-spacing:.02em}
+.th-yrnow:empty{display:none}
+@media (max-width:900px){.th-card{max-width:none}}
+@media (max-width:640px){
+  .th-card{padding:18px 18px 16px;border-radius:8px;
+    box-shadow:0 1px 2px rgba(44,78,37,.05),0 10px 24px -16px rgba(44,78,37,.2)}
+  .s-thero .th-card h1{font-size:30px}
+  .th-tally{gap:0 16px;margin-top:14px;padding-top:12px}
+  .th-tally dd{font-size:24px}
+  .th-meta{margin-top:11px;font-size:12px}
+}
+@media print{.th-card{border:0;box-shadow:none;padding:0;background:none;max-width:none}
+  .th-tally{border-top:1px solid #DDDCDB}}
 @media (max-width:640px){
   .s-thero .th-fig{inset:calc(var(--chrome-h) + 8px) 0 auto 0;grid-template-rows:auto}
   .s-thero .th-chart{width:min(104%,calc(52 * var(--svh)))}
@@ -972,9 +1107,9 @@ html.motion .prio[data-open="true"] .prio-grid > *:nth-child(2){animation-delay:
 .rb{position:relative}
 .rb-track{position:relative;height:14px}
 .rb.md .rb-track{height:18px}
-.rb .base,.rb .z{position:absolute;top:50%;height:4px;margin-top:-2px}
+.rb .base,.rb .z{position:absolute;top:50%;height:6px;margin-top:-3px}
 .rb .base{left:0;right:0;border-radius:3px;background:var(--rb-base)}
-.rb.md .base,.rb.md .z{height:6px;margin-top:-3px}
+.rb.md .base,.rb.md .z{height:8px;margin-top:-4px}
 .rb .z{box-shadow:inset 1.5px 0 0 var(--rb-ring),inset -1.5px 0 0 var(--rb-ring)}
 .rb .z.e0{border-radius:3px 0 0 3px;box-shadow:inset -1.5px 0 0 var(--rb-ring)}
 .rb .z.e1{border-radius:0 3px 3px 0;box-shadow:inset 1.5px 0 0 var(--rb-ring)}
@@ -983,14 +1118,12 @@ html.motion .prio[data-open="true"] .prio-grid > *:nth-child(2){animation-delay:
 .rb .z.nr.on{background:rgba(118,115,109,.38)}
 .z-borderline{background:rgba(201,123,45,.52)}
 .z-out_of_range{background:var(--hatch)}
-.rb .z.on{height:6px;margin-top:-3px}
-.rb.md .z.on{height:8px;margin-top:-4px}
 .rb .z-borderline.on{background:rgba(201,123,45,.66)}
 .rb .z-out_of_range.on{background:repeating-linear-gradient(135deg,rgba(179,64,47,.74) 0 1.5px,rgba(179,64,47,.26) 1.5px 3.5px)}
-.rb .z.tg,.rb .z.lab{height:8px;margin-top:-4px;border-radius:2px}
-.rb .z.tg{background:rgba(44,78,37,.62);box-shadow:none}
-.rb .z.lab{background:rgba(118,115,109,.24);box-shadow:inset 0 0 0 1px rgba(118,115,109,.36)}
-.rb.md .z.tg,.rb.md .z.lab{height:10px;margin-top:-5px}
+.rb .z.tg{background:rgba(44,78,37,.62)}
+.rb .z.lab{background:rgba(44,78,37,.26)}
+.hist span.iv{opacity:.7}
+.hist span.iv .yr{font-size:.92em}
 .rb .pv{position:absolute;top:50%;width:2px;height:12px;margin-top:-6px;transform:translateX(-50%);border-radius:1px;background:#474747;z-index:1}
 .rb .mk{position:absolute;top:50%;width:11px;height:11px;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 2.5px var(--rb-ring);z-index:2}
 .rb.md .mk{width:14px;height:14px}
@@ -1006,17 +1139,15 @@ html.motion .prio[data-open="true"] .prio-grid > *:nth-child(2){animation-delay:
 .rb .zn.on{font-weight:600}
 .rb .pvl{font-size:10.5px;font-weight:500;color:var(--ink-soft)}
 .rb.ord .rb-steps{position:absolute;inset:0;display:flex;align-items:center;gap:3px}
-.rb.ord .rb-steps i{flex:1 1 0;height:4px;border-radius:1.5px;background:var(--rb-base)}
-.rb.ord .rb-steps i.tg{height:8px;border-radius:2px;background:rgba(44,78,37,.62)}
+.rb.ord .rb-steps i{flex:1 1 0;height:6px;border-radius:1.5px;background:var(--rb-base)}
+.rb.ord .rb-steps i.tg{background:rgba(44,78,37,.62)}
 .rb.ord .rb-steps i.z-borderline{background:rgba(201,123,45,.52)}
 .rb.ord .rb-steps i.z-out_of_range{background:var(--hatch)}
-.rb.sm .z.z-borderline:not(.on),.rb.ord.sm .rb-steps i.z-borderline:not(.cur){height:2px;margin-top:-1px;border-radius:1px;background:rgba(201,123,45,.45);box-shadow:none}
-.rb.sm .z.z-out_of_range:not(.on),.rb.ord.sm .rb-steps i.z-out_of_range:not(.cur){height:2px;margin-top:-1px;border-radius:1px;background:rgba(179,64,47,.28);box-shadow:none}
-.rb.ord.sm .rb-steps i.z-borderline:not(.cur),.rb.ord.sm .rb-steps i.z-out_of_range:not(.cur){margin-top:0}
+.rb.sm .z.z-borderline:not(.on),.rb.ord.sm .rb-steps i.z-borderline:not(.cur){background:rgba(201,123,45,.45)}
+.rb.sm .z.z-out_of_range:not(.on),.rb.ord.sm .rb-steps i.z-out_of_range:not(.cur){background:rgba(179,64,47,.28)}
 .rb.sm .z-borderline.on{background:rgba(201,123,45,.7)}
 .rb.sm .mk{box-shadow:0 0 0 2.5px var(--rb-ring),0 0 0 3.5px rgba(4,5,4,.06)}
-.rb.ord.md .rb-steps i{height:6px}
-.rb.ord.md .rb-steps i.tg{height:10px}
+.rb.ord.md .rb-steps i{height:8px}
 .rb-sl{display:flex;gap:3px;margin-top:8px}
 .rb-sl span{flex:1 1 0;text-align:center;font-size:11.5px;color:var(--ink-muted);letter-spacing:0}
 .rb-sl span.on{font-weight:600}
@@ -1257,6 +1388,40 @@ html.motion .mv.in .lp{transform:none;opacity:1;transition:transform .45s cubic-
 .q-x svg{width:14px;height:14px}
 .q-x[hidden]{display:none}
 .slash{display:none;place-items:center;min-width:22px;height:22px;margin-right:6px;padding:0 6px;border-radius:4px;box-shadow:inset 0 0 0 1px var(--hair);font:500 12px/1 var(--sans);color:var(--ink-muted)}
+/* ---------- system picker ----------
+   A listbox of our own, because a native select hands the menu to the OS and
+   the one thing worth seeing in it - which system has results to work on -
+   cannot be drawn there. Each row carries the ledger's own pip strip. */
+.ps-run{display:none}
+.pr-only{display:none}
+.syspick{position:relative;display:flex;align-items:center;min-width:0}
+.sp-btn{display:flex;align-items:center;gap:8px;width:100%;height:44px;padding:0 14px 0 18px;border:0;border-radius:48px;
+  background:var(--cream);box-shadow:inset 0 0 0 1px var(--hair);font:inherit;font-size:15px;color:var(--ink);
+  cursor:pointer;text-align:left;transition:box-shadow var(--dur-1) var(--ease),background var(--dur-1) var(--ease)}
+.sp-btn:hover{box-shadow:inset 0 0 0 1px #C9C6C0}
+.sp-btn.on{box-shadow:inset 0 0 0 1.5px var(--sage)}
+.sp-btn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.sp-cur{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sp-n{flex:none;color:var(--ink-muted);font-size:13px;font-variant-numeric:tabular-nums}
+.sp-btn svg{flex:none;width:16px;height:16px;color:var(--ink-muted);transition:transform var(--dur-2) var(--ease)}
+.syspick.open .sp-btn svg{transform:rotate(180deg)}
+.syspick.open .sp-btn{box-shadow:inset 0 0 0 1.5px var(--forest);background:#fff}
+.sp-pop{position:absolute;z-index:60;top:calc(100% + 6px);left:0;min-width:max(100%,268px);max-height:min(62vh,420px);overflow:auto;
+  padding:6px;border-radius:14px;background:#fff;box-shadow:0 1px 0 rgba(37,37,37,.06),0 10px 30px -8px rgba(37,37,37,.22),0 0 0 1px var(--hair);
+  -webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.sp-pop:focus{outline:none}
+.sp-o{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;width:100%;
+  padding:9px 10px;border:0;border-radius:9px;background:none;font:inherit;font-size:14.5px;color:var(--ink);text-align:left;cursor:pointer}
+.sp-o:hover{background:var(--bone-2)}
+.sp-o.at{background:var(--bone-2);box-shadow:inset 0 0 0 1.5px var(--sage)}
+.sp-o[aria-selected="true"]{font-weight:600}
+.sp-o[aria-selected="true"] .sp-l::after{content:"";display:inline-block;width:5px;height:5px;margin-left:7px;border-radius:50%;background:var(--forest);vertical-align:middle}
+.sp-l{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sp-o .g-spec{flex:none;min-width:0;max-width:96px;overflow:hidden}
+.sp-c{display:inline-flex;align-items:center;gap:5px;min-width:26px;justify-content:flex-end;color:var(--ink-muted);font-size:13px;font-variant-numeric:tabular-nums}
+.sp-c .dot{width:6px;height:6px;border-radius:50%}
+.sp-sep{height:1px;margin:5px 8px;background:var(--hair)}
+@media (prefers-reduced-motion:reduce){.sp-btn svg{transition:none}}
 .sel-pill{position:relative;display:flex;align-items:center;min-width:0}
 .sel-pill select{width:100%;height:44px;border:0;border-radius:48px;background:var(--cream);box-shadow:inset 0 0 0 1px var(--hair);padding:0 40px 0 18px;font-size:15px;color:var(--ink-strong);cursor:pointer;-webkit-appearance:none;appearance:none;text-overflow:ellipsis;white-space:nowrap}
 .sel-pill select:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
@@ -1391,7 +1556,8 @@ html.motion .mv.in .lp{transform:none;opacity:1;transition:transform .45s cubic-
 .close-shore{position:absolute;inset:auto 0 0 0;z-index:-2;height:78%;
   background:no-repeat bottom center;background-size:100% auto;opacity:.5;
   -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 34%);mask-image:linear-gradient(180deg,transparent 0,#000 34%)}
-@media print{.close-shore{display:none}}
+@media print{.close-shore{display:block!important;position:absolute!important;inset:auto 0 0 0!important;
+  height:54mm!important;opacity:.95;filter:none;background-size:cover!important;background-position:center bottom!important}}
 .s-close::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(28,49,24,.78) 0%,rgba(28,49,24,.5) 50%,rgba(28,49,24,.3) 100%),linear-gradient(180deg,rgba(28,49,24,.35),rgba(28,49,24,0) 30%,rgba(28,49,24,0) 60%,rgba(28,49,24,.55))}
 .s-close .wrap{width:100%;padding-block:clamp(72px,calc(10 * var(--vw)),128px)}
 .close-f{margin:0}
@@ -1620,12 +1786,11 @@ html.motion .cover .photo{animation:drift 34s ease-in-out infinite alternate}
 .r-prio .plan span{display:block;margin-bottom:.4em;font-size:.74em;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--sage)}
 .lc-tv{display:block;width:100%;height:19em}
 .rb.tv .rb-track{height:24px}
-.rb.tv .base,.rb.tv .z{height:10px;margin-top:-5px}
+.rb.tv .base,.rb.tv .z{height:12px;margin-top:-6px}
 .rb.tv .base{background:rgba(255,252,247,.18);border-radius:5px}
 .rb.tv .z.e0{border-radius:5px 0 0 5px} .rb.tv .z.e1{border-radius:0 5px 5px 0}
-.rb.tv .z.tg,.rb.tv .z.lab,.rb.tv .z.on{height:14px;margin-top:-7px}
-.rb.tv .z.tg{background:rgba(164,194,157,.85);border-radius:3px}
-.rb.tv .z.lab{background:rgba(255,252,247,.3);box-shadow:none;border-radius:3px}
+.rb.tv .z.tg{background:rgba(164,194,157,.85)}
+.rb.tv .z.lab{background:rgba(164,194,157,.34)}
 .rb.tv .z-borderline{background:rgba(224,163,64,.55)}
 .rb.tv .z-borderline.on{background:rgba(224,163,64,.7)}
 .rb.tv .z-out_of_range{background:repeating-linear-gradient(135deg,rgba(229,138,122,.8) 0 2px,rgba(229,138,122,.25) 2px 5px)}
@@ -1791,7 +1956,7 @@ html.motion .slide.in .lp,html.motion .slide.in .gap{opacity:1;transition:opacit
   .toc,.tb-ex{display:none}
   .toolbar{display:flex;flex-direction:column;gap:8px}
   .tb1{display:flex;gap:8px}
-  .sel-pill{flex:1.15 1 0}
+  .sel-pill,.syspick{flex:1.15 1 0}
   .search{flex:1 1 0}
   .tabs{flex:1;justify-content:space-between}
   .tb-sub{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;min-height:44px;margin-top:6px}
@@ -1826,7 +1991,7 @@ html.motion .slide.in .lp,html.motion .slide.in .gap{opacity:1;transition:opacit
 @media (min-width:1001px){
   .ledger{display:grid;grid-template-columns:220px minmax(0,1fr);column-gap:48px;grid-template-areas:"search tools" ". sub" "toc rows";align-items:end}
   .lg-main,.toolbar,.tb1{display:contents}
-  .sel-pill{display:none}
+  .sel-pill,.syspick{display:none}
   .search{grid-area:search;align-self:end}
   .tb2{grid-area:tools}
   #rows{grid-area:rows;align-self:start}
@@ -2149,7 +2314,7 @@ html.motion .slide.in .lp,html.motion .slide.in .gap{opacity:1;transition:opacit
   .tb-find{display:grid;place-items:center;flex:none;width:0;height:44px;margin-right:-10px;overflow:hidden;opacity:0;visibility:hidden;color:var(--ink-strong);transition:width .25s var(--ease),opacity .2s var(--ease),visibility 0s linear .25s}
   .tb-find svg{width:18px;height:18px;flex:none}
   .tb2.stuck .tb-find{width:44px;opacity:1;visibility:visible;transition:width .25s var(--ease),opacity .2s var(--ease) .05s}
-  .sel-pill select,.search input{font-size:16px}
+  .sel-pill select,.sp-btn,.search input{font-size:16px}
   .tb-sub{flex-wrap:wrap;align-items:center;gap:0 16px;margin-top:4px}
   .tb-sub .key{display:contents}
   .tb-sub .key > span{min-height:32px}
@@ -2179,12 +2344,9 @@ html.motion .slide.in .lp,html.motion .slide.in .gap{opacity:1;transition:opacit
   .row .tr .sp-none{width:44px;height:16px}
   .row .tr .tw{display:none}
   .rb.sm .rb-track{height:16px}
-  .rb.sm .base,.rb.sm .z{height:6px;margin-top:-3px}
-  .rb.sm .z.on{height:8px;margin-top:-4px}
-  .rb.sm .z.tg,.rb.sm .z.lab{height:10px;margin-top:-5px}
+  .rb.sm .base,.rb.sm .z{height:8px;margin-top:-4px}
   .rb.sm .mk{width:13px;height:13px}
-  .rb.ord.sm .rb-steps i{height:6px}
-  .rb.ord.sm .rb-steps i.tg{height:10px}
+  .rb.ord.sm .rb-steps i{height:8px}
   /* plan: one merged card, the next step is a highlighted panel */
   .plan-card .light{display:none}
   .plan-card .dark{padding:28px 20px}
@@ -2234,7 +2396,7 @@ html.motion .slide.in .lp,html.motion .slide.in .gap{opacity:1;transition:opacit
 @media (max-width:360px){
   .tabs{justify-content:flex-start}
   /* the system filter shrinks to an icon plus "All"; the full names stay in the options */
-  .sel-pill{flex:0 0 auto}
+  .sel-pill,.syspick{flex:0 0 auto}
   .sel-pill::before{content:"";position:absolute;left:14px;top:50%;width:16px;height:16px;margin-top:-8px;pointer-events:none;background:currentColor;color:var(--ink-muted);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2.5 4.5h11M4.5 8h7M6.5 11.5h3' stroke='black' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2.5 4.5h11M4.5 8h7M6.5 11.5h3' stroke='black' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat}
   .sel-pill select{width:auto;max-width:132px;padding-left:38px;padding-right:34px}
   .bm-card .bm-mk{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nm nm" "v st";row-gap:2px}
@@ -2415,6 +2577,9 @@ const DEFS = [
     about: 'Ferritin reflects the iron stored in your body. Low ferritin can cause fatigue before anemia appears; high ferritin can reflect inflammation, so it is read with hs-CRP.' },
 
   { id: 'vitd', system: 'nutrients', name: 'Vitamin D', long: '25-hydroxy vitamin D', unit: 'nmol/L', precision: 0, r: [25, X, 75, B, 100, O, 250, X, 275], v: [62, 81, 88],
+    // rechecked in the spring after the 2024 result came back below the range,
+    // and again on a winter dose: readings that belong to no assessment
+    x: [['2025-03-11', 74], ['2026-02-24', 83]],
     why: 'Supports bone, muscle, immune function and mood.',
     about: 'Vitamin D is made in the skin from sunlight and absorbed from food and supplements. It supports bone density, muscle and immunity. In Canada most people run low from October to April.' },
   { id: 'b12', system: 'nutrients', name: 'Vitamin B12', unit: 'pg/mL', precision: 0, r: [100, X, 220, B, 400, O, 700, N, 900], v: [390, 455, 512],
@@ -2535,17 +2700,27 @@ const PREV_EXAM = FIRST_EXAM ? LAST_EXAM : EXAM_DATES[EXAM_DATES.length - 2];
 
 function buildMarker(d, order) {
   const bands = toBands(d), ordinal = !!d.steps;
-  const points = EXAM_DATES.map((examDate, i) => {
-    const raw = d.v[i]; if (raw == null) return null;
+  const reading = (examDate, raw, kind) => {
+    if (raw == null) return null;
     const value = ordinal ? d.steps.indexOf(raw) : raw;
-    return { examDate, value, valueText: ordinal ? raw : null, comparator: null, state: ordinal ? d.stepStates[value] : stateFor(bands, value) };
-  }).filter(Boolean);
+    return { examDate, kind, value, valueText: ordinal ? raw : null, comparator: null, state: ordinal ? d.stepStates[value] : stateFor(bands, value) };
+  };
+  /* Not every result arrives on the annual cadence. A low vitamin D gets
+     rechecked in the spring; a thyroid dose change is followed up in six
+     weeks. Those readings are real history and belong on the marker's line,
+     but they are not an assessment: the ring chart, the year scrubber and the
+     year-over-year tally all stay keyed to EXAM_DATES, and an interim reading
+     is simply a point between two of them. */
+  const points = [
+    ...EXAM_DATES.map((examDate, i) => reading(examDate, d.v[i], 'exam')),
+    ...(d.x || []).map(([date, raw]) => reading(date, raw, 'interim')),
+  ].filter(Boolean).sort((a, b) => (a.examDate < b.examDate ? -1 : a.examDate > b.examDate ? 1 : 0));
   const latest = points[points.length - 1];
   // one lab hiccup and a marker has no value in any exam; it is dropped rather
   // than taking the whole page down on latest.examDate
   if (!latest) return null;
   const carriedForward = latest.examDate !== LAST_EXAM;
-  const previous = carriedForward || FIRST_EXAM ? null : (points.find(p => p.examDate === PREV_EXAM) || null);
+  const previous = carriedForward || FIRST_EXAM ? null : (points.find(p => p.examDate === PREV_EXAM && p.kind === 'exam') || null);
   const mv = {
     marker: { id: d.id, name: d.name, long: d.long, system: d.system, order, precision: d.precision || 0, unit: d.unit,
       direction: 'in_range', copy: { why: d.why, about: d.about }, oncePerLifetime: !!d.once, valueType: ordinal ? 'ordinal' : 'quantity' },
@@ -2570,7 +2745,7 @@ const SUMMARY = (() => {
   const byState = emptyCounts(), prev = emptyCounts(); let prevTotal = 0;
   MARKERS.forEach(m => {
     byState[m.latest.state]++;
-    const pp = [...m.points].reverse().find(p => p.examDate <= PREV_EXAM);
+    const pp = [...m.points].reverse().find(p => p.kind === 'exam' && p.examDate <= PREV_EXAM);
     if (pp) { prev[pp.state]++; prevTotal++; }
   });
   return { total: MARKERS.length, byState, healthy: byState.optimal + byState.in_range,
@@ -2586,7 +2761,7 @@ const SYSTEMS = SYSTEM_ORDER.map(s => {
 /** PatientView (lib/ale/types.ts) — everything the dashboard, TV deck and PDF render. */
 const VIEW = {
   productName: PRODUCT_NAME,
-  report: { id: 'sample-report', examDate: LAST_EXAM, collectedAt: '2026-09-12T08:10:00-04:00', labName: 'Dynacare', publishedAt: '2026-09-24T16:30:00-04:00', amended: false, status: 'published' },
+  report: { id: 'sample-report', examDate: LAST_EXAM, collectedAt: '2026-09-12T08:10:00-04:00', labName: 'LifeLabs', publishedAt: '2026-09-24T16:30:00-04:00', amended: false, status: 'published' },
   patient: { firstName: 'Daniel', sex: 'M', ageAtExam: 44 },
 
   version: VERSION, markers: MARKERS, systems: SYSTEMS, summary: SUMMARY, examDates: EXAM_DATES,
@@ -2738,11 +2913,11 @@ function renderBullseye(el, opts) {
 .bx-ghosts:not(.off) .bx-gh-l{animation:bxGhostL .4s ease-out both;animation-delay:calc(var(--i,0) * 55ms)}
 @keyframes bxGhost{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
 @keyframes bxGhostL{from{opacity:0}to{opacity:1}}
-.bx-n{transform-origin:center}
-.bx-n.tick{animation:bxTick .42s cubic-bezier(.2,.8,.25,1)}
+.bx-count-t{transform-origin:center}
+.bx-count-t.tick{animation:bxTick .42s cubic-bezier(.2,.8,.25,1)}
 @keyframes bxTick{0%{transform:translateY(5px) scale(.94);opacity:.35}60%{transform:translateY(0) scale(1.03)}100%{transform:none;opacity:1}}
 .bx-rm .bx-ghosts{transition:none}
-.bx-rm .bx-gh-o,.bx-rm .bx-gh-l,.bx-rm .bx-n.tick{animation:none}
+.bx-rm .bx-gh-o,.bx-rm .bx-gh-l,.bx-rm .bx-count-t.tick{animation:none}
 .bx-dot{cursor:pointer;outline:none;transition:opacity .28s cubic-bezier(.2,.7,.2,1)}
 .bx-dot .fr,.bx-dot .sel{opacity:0;transition:opacity .16s}
 .bx-dot:focus-visible .fr{opacity:1}
@@ -2849,6 +3024,18 @@ function renderBullseye(el, opts) {
   /* ---------- state ---------- */
   let W = 0, wide = true, dockOn = false, cx = 0, cy = 0, R = 0, rr = [], slot = 0, keyAng = 0, played = !canAnim || opts.autoplay === false;
   let active = -1, hot = -1, sel = -1, hlSys = null, hlState = null, compare = false, anims = [], raf = 0, timers = [], lastPtr = 'mouse', tipVia = 'hover';
+  /* Two things want to highlight a system: the explore pane (sticky, via
+     highlight()) and the pointer (transient). Holding one variable for both
+     meant hovering a wedge had to stash the sticky value and put it back on
+     the way out, with '' and null carrying different meanings. They are kept
+     apart now and hlSys is derived; a hover can never lose the pane's choice. */
+  let stickySys = null, hoverSys = null;
+  function setHl() {
+    const v = hoverSys !== null ? hoverSys : stickySys;
+    if (v === hlSys) return;
+    hlSys = v; if (hlSys) hlState = null;
+    applyState();
+  }
   let dotEls = [], pos = [], labelsBuilt = false;
   const coarse = typeof matchMedia === 'function' && matchMedia('(hover: none)').matches;
 
@@ -2988,7 +3175,7 @@ function renderBullseye(el, opts) {
     cuts.forEach(g => { rings += `<path d="M${pxy(rr[1] + 0.5, g)}L${pxy(R, g)}" stroke="${PAL.seam}" stroke-width="1" stroke-linecap="butt"/>`; });
     rings += '</g>';
     /* ring boundaries, drawn on entrance (start at 12 o'clock) */
-    const bnd = [[rr[1], PAL.line.core, 1], [rr[2], PAL.line.opt, 1.25], [rr[3], PAL.line.hair, 1], [rr[4], PAL.line.hair, 1], [rr[5], PAL.line.out, 1]];
+    const bnd = [[rr[1], PAL.line.core, 1], [rr[2], PAL.line.opt, 1.75], [rr[3], PAL.line.hair, 1], [rr[4], PAL.line.hair, 1], [rr[5], PAL.line.out, 1]];
     let bounds = `<g class="bx-rings bx-bounds">`;
     bnd.forEach(([r, c, w]) => { bounds += `<circle class="bx-bd" cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(r)}" fill="none" stroke="${c}" stroke-width="${w}" transform="rotate(-90 ${f1(cx)} ${f1(cy)})" data-len="${f1(2 * Math.PI * r)}"/>`; });
     bounds += '</g>';
@@ -3024,7 +3211,11 @@ function renderBullseye(el, opts) {
       if (subTr > .06) subTr -= .03; else subFs -= .25;
       subY = nFs * .08 + subFs * 1.75;
     }
-    out.push(`<g class="bx-count" aria-hidden="true"><text class="bx-serif bx-n" x="${f1(cx)}" y="${f1(cy + nFs * .08)}" text-anchor="middle" font-size="${f1(nFs)}" fill="${PAL.count}" letter-spacing="-.02em">${COUNT.optimal}</text>` +
+    const denFs = nFs * 0.36;
+    out.push(`<g class="bx-count" aria-hidden="true">`
+      + `<text class="bx-serif bx-count-t" x="${f1(cx)}" y="${f1(cy + nFs * .08)}" text-anchor="middle" font-size="${f1(nFs)}" fill="${PAL.count}" letter-spacing="-.02em">`
+      + `<tspan class="bx-n">${COUNT.optimal}</tspan>`
+      + `<tspan class="bx-den" font-size="${f1(denFs)}" fill="${PAL.countSub}" dx="${f1(denFs * .22)}">of ${DOTS.length}</tspan></text>` +
       `<text x="${f1(cx)}" y="${f1(cy + subY)}" text-anchor="middle" font-size="${f1(subFs)}" font-weight="600" letter-spacing="${f1(subTr)}em" fill="${PAL.countSub}">${H(subTxt)}</text></g>`);
 
     /* compare: last exam ghosts + dashed trails (hidden until setCompare(true)) */
@@ -3349,10 +3540,12 @@ function renderBullseye(el, opts) {
   function setCount(n) {
     const t = svg.querySelector('.bx-n'); if (!t) return;
     t.textContent = n;
+    // the lift belongs on the <text>; a <tspan> does not reliably take a transform
+    const box = svg.querySelector('.bx-count-t') || t;
     // the number is a tally, and walking the years changes it; a short lift
     // marks the change so it is not a silent swap
     if (canAnim && lastCount !== null && lastCount !== n) {
-      t.classList.remove('tick'); void t.getBoundingClientRect(); t.classList.add('tick');
+      box.classList.remove('tick'); void box.getBoundingClientRect(); box.classList.add('tick');
     }
     lastCount = n;
   }
@@ -3377,58 +3570,61 @@ function renderBullseye(el, opts) {
   const on = (t, ev, fn, o) => { t.addEventListener(ev, fn, o); offs.push(() => t.removeEventListener(ev, fn, o)); };
   const offs = [];
   on(svg, 'pointerdown', e => { lastPtr = e.pointerType || 'mouse'; });
-  let preview = null;
-  on(svg, 'pointerover', e => {
-    if (e.pointerType !== 'mouse') return;
-    const lh = e.target.closest && e.target.closest('.bx-lhit');
-    if (lh) { if (preview === null) preview = hlSys || ''; hlSys = lh.dataset.s; hlState = null; applyState(); return; }
-    const i = dotIndex(e.target); if (i < 0) return;
-    if (!dockOn) showTip(i, 'hover'); else { hot = i; markHot(); }
-  });
-  on(svg, 'pointerout', e => {
-    if (e.pointerType !== 'mouse') return;
-    const lh = e.target.closest && e.target.closest('.bx-lhit');
-    if (lh && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('.bx-lhit'))) { hlSys = preview || null; preview = null; applyState(); return; }
-    const i = dotIndex(e.target); if (i < 0) return;
-    const to = dotIndex(e.relatedTarget); if (to === i) return;
-    if (document.activeElement === dotEls[i]) return;
-    if (!dockOn) hideTip(); else { hot = sel; markHot(); }
-  });
+
+  /* ---------- mouse hover ----------
+     One handler owns it. It was split across pointerover and pointerout on the
+     dot groups, so the mouse had to land exactly on a 5px circle while a finger
+     got a 28px slop radius through nearest() - the harder target handed to the
+     more precise device, and two code paths to keep in agreement. Proximity now
+     decides for both, the system wedge is read from the same event, and the
+     parallax that already ran on every move shares the handler. */
+  const fine = typeof matchMedia === 'function' && matchMedia('(hover:hover) and (pointer:fine)').matches;
+  const parallax = !RM && fine;
+  let pr = 0, pX = 0, pY = 0, parked = true, hoverI = -1;
+  const applyPar = () => { pr = 0; el.style.setProperty('--bx-px', pX.toFixed(3)); el.style.setProperty('--bx-py', pY.toFixed(3)); };
+
+  function hoverDot(i) {
+    if (i === hoverI) return;
+    hoverI = i;
+    if (dockOn) { hot = i >= 0 ? i : sel; markHot(); return; }
+    if (i >= 0) showTip(i, 'hover');
+    else if (dotIndex(document.activeElement) < 0) hideTip(); // a keyboard tip outlives the pointer
+  }
+
+  if (fine) {
+    on(svg, 'pointermove', e => {
+      if (e.pointerType !== 'mouse') return;
+      const b = svg.getBoundingClientRect(); if (!b.width) return;
+      if (parallax) {
+        pX = clamp(((e.clientX - b.left) / b.width - 0.5) * 2, -1, 1);
+        pY = clamp(((e.clientY - b.top) / b.height - 0.5) * 2, -1, 1);
+        if (parked) { parked = false; el.classList.add('bx-par'); }
+        if (!pr) pr = requestAnimationFrame(applyPar);
+      }
+      const lh = e.target.closest && e.target.closest('.bx-lhit');
+      hoverSys = lh ? lh.dataset.s : null; setHl();
+      // over a system label the whole wedge is the subject, so no single dot is
+      const [x, y] = toSvg(e);
+      hoverDot(lh ? -1 : nearest(x, y, pxToSvg(10)));
+    });
+    on(svg, 'pointerleave', () => {
+      if (parallax) { parked = true; el.classList.remove('bx-par'); pX = pY = 0; if (!pr) pr = requestAnimationFrame(applyPar); }
+      hoverSys = null; setHl(); hoverDot(-1);
+    });
+  }
+
   on(svg, 'click', e => {
     const lab = e.target.closest && e.target.closest('.bx-lhit');
-    if (lab && opts.onSystem) { preview = null; opts.onSystem(lab.dataset.s); return; }
+    if (lab && opts.onSystem) { hoverSys = null; setHl(); opts.onSystem(lab.dataset.s); return; }
     let i = dotIndex(e.target);
     if (lastPtr !== 'mouse') {
       if (i < 0) { const [x, y] = toSvg(e); i = nearest(x, y, pxToSvg(28)); }
       if (i < 0) { if (!dockOn) hideTip(); return; }
       if (dockOn || hot !== i) { active = i; roving(i); showTip(i, 'tap'); return; }
-    }
+    } else if (i < 0) i = hoverI; // open whatever the tooltip is pointing at
     if (i >= 0 && opts.onOpen) opts.onOpen(DOTS[i].m.id);
   });
-  /* Parallax. A few pixels of differential drift as the pointer crosses the
-     chart, enough to separate the rings from the dots. Fine pointers only, and
-     never under reduced motion - a touch device gets nothing. */
-  if (!RM && matchMedia('(hover:hover) and (pointer:fine)').matches) {
-    let pr = 0, pX = 0, pY = 0, parked = true;
-    const apply = () => {
-      pr = 0;
-      el.style.setProperty('--bx-px', pX.toFixed(3));
-      el.style.setProperty('--bx-py', pY.toFixed(3));
-    };
-    on(svg, 'pointermove', e => {
-      if (e.pointerType !== 'mouse') return;
-      const b = svg.getBoundingClientRect(); if (!b.width) return;
-      pX = clamp(((e.clientX - b.left) / b.width - 0.5) * 2, -1, 1);
-      pY = clamp(((e.clientY - b.top) / b.height - 0.5) * 2, -1, 1);
-      if (parked) { parked = false; el.classList.add('bx-par'); }
-      if (!pr) pr = requestAnimationFrame(apply);
-    });
-    on(svg, 'pointerleave', () => {
-      // ease back to centre rather than snapping: drop the no-transition class
-      parked = true; el.classList.remove('bx-par'); pX = pY = 0;
-      if (!pr) pr = requestAnimationFrame(apply);
-    });
-  }
+
   on(svg, 'focusin', e => { const i = dotIndex(e.target); if (i < 0) return; active = i; roving(i); showTip(i, 'key'); });
   on(svg, 'focusout', e => { if (svg.contains(e.relatedTarget)) return; if (!dockOn) hideTip(); });
   on(svg, 'keydown', e => {
@@ -3489,8 +3685,8 @@ function renderBullseye(el, opts) {
       anims.forEach(a => { try { a.cancel(); } catch (e) { /* noop */ } }); timers.forEach(clearTimeout); cancelAnimationFrame(raf); cancelAnimationFrame(rzRaf);
       el.innerHTML = ''; el.className = prevClass;
     },
-    highlight(systemId) { hlSys = systemId && SYS.some(s => s.id === systemId) ? systemId : null; if (hlSys) hlState = null; applyState(); if (hlSys && SYS.find(s => s.id === hlSys).markers.some(m => m.state === 'out_of_range')) pulse(); },
-    highlightState(state) { hlState = ORDER.includes(state) ? state : null; if (hlState) hlSys = null; applyState(); },
+    highlight(systemId) { stickySys = systemId && SYS.some(s => s.id === systemId) ? systemId : null; setHl(); if (hlSys && SYS.find(s => s.id === hlSys).markers.some(m => m.state === 'out_of_range')) pulse(); },
+    highlightState(state) { hlState = ORDER.includes(state) ? state : null; if (hlState) { stickySys = hoverSys = null; hlSys = null; } applyState(); },
     /* setYear(t): 0 is the previous exam, 1 is this one. Dots travel between
        the positions they already hold, their state flips at the midpoint, and
        the centre count counts with them. */
@@ -3527,6 +3723,11 @@ function renderBullseye(el, opts) {
         if (st === 'optimal') lit++;
       });
       setCount(lit);
+      if (opts.onFrame) {
+        const by = { optimal: 0, in_range: 0, borderline: 0, out_of_range: 0 };
+        dotEls.forEach(g => { if (g && by[g.dataset.st] !== undefined) by[g.dataset.st]++; });
+        opts.onFrame(by, u);
+      }
       const live = u > n - 1.015;
       // the trails compare the last two exams only; walking back through earlier
       // years they would point at a future that has not happened yet
@@ -3731,6 +3932,12 @@ void main(){
   // Liquids are opaque and shaded as if seen against the cream set: Beer-Lambert
   // through the chord for serum and urine, a scattering core for whole blood.
   // Back faces below the fill line stand in for the liquid's top surface.
+  /* The three straw fluids are Beer-Lambert absorptions. They used to share
+     one spectral ratio (about 1 : 2.7 : 8.5 red:green:blue) at three
+     magnitudes, which is a single hue at three lightnesses - serum, plasma and
+     urine measured 3 degrees apart and read as the same liquid. The ratios
+     differ now: serum stays warm amber, plasma is greyer and cooler, urine
+     transmits more green and reads as pale lemon. */
   const FS_LIQ = `
 uniform float uDim, uOp, uGlow, uFill, uClot, uGel, uTilt, uKind;
 uniform vec3 uHaze;
@@ -3762,12 +3969,12 @@ void main(){
     // spun plasma: packed red cells, a thin buffy coat, straw plasma above (clearer than serum, no gel)
     vec3 cells = mix(vec3(0.150, 0.022, 0.015), vec3(0.034, 0.0065, 0.0045), smoothstep(0.03, 0.62, th));
     vec3 buffy = mix(vec3(0.840, 0.790, 0.670), vec3(0.640, 0.600, 0.500), th);
-    vec3 pla = creamL * beer(vec3(0.15, 0.42, 1.30), 0.32 + 0.9 * th);
+    vec3 pla = creamL * beer(vec3(0.26, 0.44, 1.00), 0.32 + 0.9 * th);
     float e = 0.02;
     col = mix(cells, buffy, smoothstep(uClot - e, uClot + e, y));
     col = mix(col, pla, smoothstep(uGel - e, uGel + e, y));
   } else {
-    col = creamL * beer(vec3(0.12, 0.33, 1.08), 0.30 + 0.95 * th);
+    col = creamL * beer(vec3(0.08, 0.19, 1.02), 0.30 + 0.95 * th);
   }
   col *= mix(0.70, 1.12, wrap);
   float men = smoothstep(uFill - 0.10, uFill - 0.004, vLP.y) * (1.0 - top);
@@ -3897,8 +4104,9 @@ void main(){
 <linearGradient id="${u}t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#DCC8A6"/><stop offset="1" stop-color="#EBDEC3"/></linearGradient>
 <linearGradient id="${u}g" x1="0" x2="1"><stop offset="0" stop-color="#5E584C" stop-opacity=".42"/><stop offset=".07" stop-color="#fff" stop-opacity=".05"/><stop offset=".2" stop-color="#fff" stop-opacity=".72"/><stop offset=".3" stop-color="#fff" stop-opacity=".04"/><stop offset=".8" stop-color="#fff" stop-opacity=".04"/><stop offset=".86" stop-color="#F4F8EF" stop-opacity=".6"/><stop offset=".93" stop-color="#fff" stop-opacity=".05"/><stop offset="1" stop-color="#5E584C" stop-opacity=".45"/></linearGradient>
 <linearGradient id="${u}b" x1="0" x2="1"><stop offset="0" stop-color="#8A3026"/><stop offset=".22" stop-color="#521611"/><stop offset=".7" stop-color="#3B0E0B"/><stop offset="1" stop-color="#6E2219"/></linearGradient>
-<linearGradient id="${u}s" x1="0" x2="1"><stop offset="0" stop-color="#F4DE9E"/><stop offset=".45" stop-color="#E6C06A"/><stop offset="1" stop-color="#EFD28A"/></linearGradient>
-<linearGradient id="${u}u" x1="0" x2="1"><stop offset="0" stop-color="#F6E7B4"/><stop offset=".5" stop-color="#EDD27F"/><stop offset="1" stop-color="#F3DEA0"/></linearGradient>
+<linearGradient id="${u}s" x1="0" x2="1"><stop offset="0" stop-color="#EFD27F"/><stop offset=".45" stop-color="#DCAE43"/><stop offset="1" stop-color="#E8C367"/></linearGradient>
+<linearGradient id="${u}u" x1="0" x2="1"><stop offset="0" stop-color="#FBF9DC"/><stop offset=".5" stop-color="#F2F0B2"/><stop offset="1" stop-color="#F7F5CA"/></linearGradient>
+<linearGradient id="${u}m" x1="0" x2="1"><stop offset="0" stop-color="#E4DCBC"/><stop offset=".45" stop-color="#CDC091"/><stop offset="1" stop-color="#DCD3AE"/></linearGradient>
 <linearGradient id="${u}p" x1="0" x2="1"><stop offset="0" stop-color="#D9D3C6"/><stop offset=".25" stop-color="#FBF8F1"/><stop offset="1" stop-color="#F3EFE6"/></linearGradient>
 <linearGradient id="${u}c" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".16"/><stop offset=".22" stop-color="#fff" stop-opacity=".30"/><stop offset=".4" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".22"/></linearGradient>
 <radialGradient id="${u}h"><stop offset="0" stop-color="#3E3A2C" stop-opacity=".34"/><stop offset=".6" stop-color="#3E3A2C" stop-opacity=".12"/><stop offset="1" stop-color="#3E3A2C" stop-opacity="0"/></radialGradient>
@@ -3931,7 +4139,7 @@ ${cup.states.map((st, i) => `<rect x="${cx - 48 + i * 7}" y="${Y(4.6) + 64}" wid
     tubes.forEach((c, i) => {
       const x = X[i], t = 23, lqTop = Y(c.k.fill + BASE_H), lbl0 = Y(7.0), lbl1 = Y(3.1), sst = c.k.liquid === 1, pla = c.k.liquid === 3;
       const lw = 34, n = c.states.length, th = Math.min(4, (lbl1 - lbl0 - 16) / Math.max(1, n) - 1);
-      s += `<g><rect x="${x - t + 2}" y="${lqTop}" width="${2 * t - 4}" height="${360 - lqTop}" fill="url(#${u}${sst || pla ? 's' : 'b'})"/>
+      s += `<g><rect x="${x - t + 2}" y="${lqTop}" width="${2 * t - 4}" height="${360 - lqTop}" fill="url(#${u}${sst ? 's' : pla ? 'm' : 'b'})"/>
 ${pla ? `<rect x="${x - t + 2}" y="${Y(3.74)}" width="${2 * t - 4}" height="${f(Y(3.65) - Y(3.74))}" fill="#ECE5D4"/><rect x="${x - t + 2}" y="${Y(3.65)}" width="${2 * t - 4}" height="${f(360 - Y(3.65))}" fill="url(#${u}b)"/>` : ''}
 ${sst ? `<rect x="${x - t + 2}" y="${Y(4.15)}" width="${2 * t - 4}" height="${f(Y(3.35) - Y(4.15))}" fill="#E8E1CC"/><rect x="${x - t + 2}" y="${Y(3.35)}" width="${2 * t - 4}" height="${f(360 - Y(3.35))}" fill="url(#${u}b)"/>` : ''}
 <rect x="${x - t + 2}" y="${lqTop - 1}" width="${2 * t - 4}" height="3" fill="#fff" fill-opacity="${sst || pla ? .55 : .25}"/>
@@ -5857,6 +6065,14 @@ function gridTicks(lo, hi) {
   return best.t.length > 4 ? best.t.filter((_, i) => i % 2 === 0) : best.t;
 }
 let GID = 0;
+/* Charts are scaled in time, not in exam number. For a marker drawn once a
+   year the two are identical, which is why this went unnoticed; the moment a
+   marker is rechecked off-cadence, index spacing draws a six-month gap the
+   same width as a twelve-month one and puts the recheck on top of the next
+   annual point. T0/T1 span the assessments, so the annual marks stay exactly
+   where they have always been and interim readings fall between them. */
+const T0 = dayNum(EXAM_DATES[0]), T1 = dayNum(EXAM_DATES[EXAM_DATES.length - 1]);
+const tFrac = iso => (T1 > T0 ? clamp((dayNum(iso) - T0) / (T1 - T0), 0, 1) : 0.5);
 function lineChart(mv, { w, h, variant = 'card' } = {}) {
   const c = CH[variant] || CH.card, dark = variant.startsWith('tv');
   const pts = mv.points.filter(p => p.value != null);
@@ -5864,7 +6080,7 @@ function lineChart(mv, { w, h, variant = 'card' } = {}) {
   const lastTxt = pts.length ? valText(mv, pts[pts.length - 1]) : '';
   const padR = c.lastSide ? Math.max(c.padR, Math.ceil(lastTxt.length * c.last * 0.6) + 12) : c.padR;
   const iw = w - c.padL - padR, ih = h - c.padT - c.padB;
-  const X = i => c.padL + (n === 1 ? iw / 2 : (i / (n - 1)) * iw);
+  const X = t => c.padL + (n === 1 ? iw / 2 : t * iw);
   const vals = pts.map(p => p.value);
   let a = Math.min(...vals), b = Math.max(...vals);
   let far = 0; // -1 the target sits below the frame, +1 above it
@@ -5879,7 +6095,7 @@ function lineChart(mv, { w, h, variant = 'card' } = {}) {
   const col = dark
     ? { line: '#FFFCF7', sub: 'rgba(255,252,247,.66)', strong: '#FFFCF7', base: 'rgba(255,252,247,.22)', fill: tg ? 'rgba(164,194,157,.24)' : 'rgba(255,252,247,.08)', edge: tg ? 'rgba(164,194,157,.7)' : 'rgba(255,252,247,.35)', lab: 'rgba(255,252,247,.85)', bg: '#1C3118', grid: 'rgba(255,252,247,.08)' }
     : { line: '#2C4E25', sub: '#76736D', strong: '#252525', base: '#DDDCDB', fill: tg ? 'rgba(135,164,130,.20)' : 'rgba(118,115,109,.12)', edge: tg ? 'rgba(44,78,37,.38)' : 'rgba(118,115,109,.40)', lab: tg ? '#1A500F' : '#474747', bg: '#FFFCF7', grid: '#EEEAE3' };
-  const P = pts.map(p => [X(EXAM_DATES.indexOf(p.examDate)), Y(p.value)]);
+  const P = pts.map(p => [X(tFrac(p.examDate)), Y(p.value)]);
   const font = 'font-family="Inter,sans-serif"';
   const T = (x, y, s, fs, fill, anchor = 'start', weight = 400, cls = '') => `<text${cls ? ` class="${cls}"` : ''} x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anchor}" font-size="${fs}" font-weight="${weight}" fill="${fill}" ${font} style="font-variant-numeric:tabular-nums">${esc(s)}</text>`;
   const HL = (y, stroke, sw = 1) => `<line x1="${c.padL}" x2="${(c.padL + iw).toFixed(1)}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${stroke}" stroke-width="${sw}"/>`;
@@ -5953,6 +6169,8 @@ function lineChart(mv, { w, h, variant = 'card' } = {}) {
     const last = i === pts.length - 1, [cx, cy] = P[i];
     if (!last && i !== 0 && c.midPts === false) return;
     if (last) out += `<circle class="lp" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${variant === 'mini' ? 3.75 : dark ? 8 : 5}" fill="${dark ? HUE_DARK[p.state] : HEX[p.state]}" stroke="${col.bg}" stroke-width="${dark ? 3 : 2.5}"/>`;
+    // an interim recheck is a lighter mark than an assessment: same line, less weight
+    else if (p.kind === 'interim') out += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${dark ? 3.5 : 2}" fill="${col.bg}" stroke="${col.sub}" stroke-width="${dark ? 2 : 1.25}"/>`;
     else out += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${dark ? 5 : 2.75}" fill="${col.bg}" stroke="${col.line}" stroke-width="${dark ? 2.5 : 1.5}"/>`;
     const mode = c.labels;
     if (mode === 'none' || (mode === 'ends' && !last && i !== 0) || (mode === 'notlast' && last)) return;
@@ -5969,13 +6187,14 @@ function lineChart(mv, { w, h, variant = 'card' } = {}) {
     const tx = i === 0 && P.length > 1 ? Math.max(cx - 2, 0) : last && P.length > 1 ? Math.min(cx + 2, w) : cx;
     out += T(tx, ty, valText(mv, p), fs, last ? lastCol : col.sub, anchor, last ? 600 : 400);
   });
-  const plotted = new Set(pts.map(p => EXAM_DATES.indexOf(p.examDate)));
+  // the axis names the assessments; an interim reading is dated in its own label
+  const plotted = new Set(pts.map(p => p.examDate));
   if (c.yr) EXAM_DATES.forEach((e, i) => {
-    if (c.yrs === 'ends' && i !== 0 && i !== n - 1 && !plotted.has(i)) return;
+    if (c.yrs === 'ends' && i !== 0 && i !== n - 1 && !plotted.has(e)) return;
     const anchor = i === 0 ? 'start' : i === n - 1 ? (c.lastSide ? 'middle' : 'end') : 'middle';
-    out += T(X(i), h - (dark ? 10 : 6), formatYear(e), c.yr, col.sub, anchor);
+    out += T(X(tFrac(e)), h - (dark ? 10 : 6), formatYear(e), c.yr, col.sub, anchor);
   });
-  const aria = `${mv.marker.name}: ${pts.map(p => `${valText(mv, p)} in ${formatYear(p.examDate)}`).join(', ')}.${g ? ` ${tg ? 'Target' : 'Lab range'} ${targetText(mv)}.` : ''}`;
+  const aria = `${mv.marker.name}: ${pts.map(p => `${valText(mv, p)} in ${p.kind === 'interim' ? formatMonthYear(p.examDate) : formatYear(p.examDate)}`).join(', ')}.${g ? ` ${tg ? 'Target' : 'Lab range'} ${targetText(mv)}.` : ''}`;
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(aria)}">${defs ? `<defs>${defs}</defs>` : ''}${out}</svg>`;
 }
 /* Ledger "since 2025" sparkline: 56×20, the line plus a dashed reference at
@@ -5995,8 +6214,17 @@ function spark(mv) {
   const W = 56, H = 20, TOP = 6.5, BOT = 13.5, PAD = 2;
   if (mv.carriedForward) return `<span class="tw tw-once">Once · ${esc(formatYear(mv.latest.examDate))}</span>`;
   const word = `<span class="tw tw-${mv.trend}">${TREND[mv.trend] || ''}</span>`;
-  const band = (y0, y1, good) => `<rect x="0" y="${y0.toFixed(1)}" width="${W}" height="${(y1 - y0).toFixed(1)}" fill="${good ? 'rgba(44,78,37,.17)' : 'rgba(118,115,109,.09)'}"/>`;
-  const wrap = inner => `<svg class="sp" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">${inner}</svg>${word}`;
+  /* The band used to be a flat rect bleeding to all four edges, which read as
+     "half this box is tinted" rather than as a target. It gets a hairline on
+     each edge that is actually an edge - the open side of an open-ended band
+     has none - and that single line is what makes the strip legible. */
+  const edge = good => (good ? 'rgba(44,78,37,.55)' : 'rgba(118,115,109,.42)');
+  const rule = (y, good) => `<line x1="0" x2="${W}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${edge(good)}" stroke-width="1"/>`;
+  // the boundary carries the band, not the fill: a strong edge over a faint
+  // wash reads as a zone, where a flat block read as a tinted half-box
+  const band = (y0, y1, good) => `<rect x="0" y="${y0.toFixed(1)}" width="${W}" height="${(y1 - y0).toFixed(1)}" fill="${good ? 'rgba(44,78,37,.13)' : 'rgba(118,115,109,.075)'}"/>`
+    + (y0 > 0.01 ? rule(y0, good) : '') + (y1 < H - 0.01 ? rule(y1, good) : '');
+  const wrap = (inner, defs) => `<svg class="sp" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">${defs ? `<defs>${defs}</defs>` : ''}${inner}</svg>${word}`;
 
   const pts = mv.points.filter(p => p.value != null);
   if (!pts.length) return `<span class="sp-none" aria-hidden="true"></span>${word}`;
@@ -6010,7 +6238,7 @@ function spark(mv) {
     const strip = good.length
       ? band(yOf(Math.max(...good)) - (H - PAD * 2) / (n * 2), yOf(Math.min(...good)) + (H - PAD * 2) / (n * 2), true) : '';
     const cur = mv.latest.value;
-    return wrap(`${strip}<circle cx="${(W / 2).toFixed(1)}" cy="${yOf(cur).toFixed(1)}" r="3.5" fill="${HEX[mv.latest.state]}"/>`);
+    return wrap(`${strip}<circle cx="${(W / 2).toFixed(1)}" cy="${yOf(cur).toFixed(1)}" r="3.1" fill="${HEX[mv.latest.state]}" stroke="var(--rb-ring,#FFFCF7)" stroke-width="1.4"/>`);
   }
 
   const g = goalOf(mv), dom = mv.bands.domain, bl = bandList(mv.bands);
@@ -6020,7 +6248,8 @@ function spark(mv) {
     const sp = Math.max(hi - lo, Math.abs(hi) * 0.08) * 1.4 || 1;
     const mid = (lo + hi) / 2;
     const Y = v => H / 2 - ((v - mid) / sp) * (H - PAD * 2);
-    return wrap(series(pts, Y, mv));
+    const r = series(pts, Y, mv);
+    return wrap(r.g, r.defs);
   }
 
   const openLo = g.lo <= dom[0] + 1e-9, openHi = g.open || g.hi >= dom[1] - 1e-9;
@@ -6045,21 +6274,36 @@ function spark(mv) {
     Y = v => v < g.lo ? BOT + sat((g.lo - v) / unit) * (H - PAD - BOT)
       : BOT - sat((v - g.lo) / unit) * BOT;
   }
-  return wrap(strip + series(pts, Y, mv));
+  const sp = series(pts, Y, mv);
+  return wrap(strip + sp.g, sp.defs);
 }
 
 /* the series itself: the path when there is history, and always a seated
-   endpoint - a first assessment draws one dot on its band, not an empty box */
+   endpoint - a first assessment draws one dot on its band, not an empty box.
+   It used to be a flat dark line between an outsized hollow dot and an
+   outsized filled one, running edge to edge: at 56x20 the punctuation
+   outweighed the line. The line now carries the meaning - it starts neutral
+   and arrives in the colour of today's state - and the marks are small enough
+   to read as marks. */
+const SPX = t => 5 + t * 46;                     // 5 .. 51 inside a 56 box
+const SP_PAST = '#97928A';
 function series(pts, Y, mv) {
-  const W = 56;
-  const e = pts[pts.length - 1], s = pts[0];
   const n = EXAM_DATES.length;
-  const X = p => (n < 2 ? W / 2 : 4 + (EXAM_DATES.indexOf(p.examDate) / (n - 1)) * (W - 8));
-  const line = pts.length > 1
-    ? `<path d="${pts.map((p, i) => (i ? 'L' : 'M') + X(p).toFixed(1) + ' ' + Y(p.value).toFixed(1)).join(' ')}" fill="none" stroke="#474747" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`
-      + `<circle cx="${X(s).toFixed(1)}" cy="${Y(s.value).toFixed(1)}" r="2" fill="var(--rb-ring,#FFFCF7)" stroke="#474747" stroke-width="1.25"/>`
-    : '';
-  return `${line}<circle cx="${X(e).toFixed(1)}" cy="${Y(e.value).toFixed(1)}" r="3.5" fill="${HEX[e.state]}"/>`;
+  const e = pts[pts.length - 1], s = pts[0];
+  const X = p => (n < 2 ? 28 : SPX(tFrac(p.examDate)));
+  const ex = X(e).toFixed(1), ey = Y(e.value).toFixed(1);
+  const dot = `<circle cx="${ex}" cy="${ey}" r="3.1" fill="${HEX[e.state]}" stroke="var(--rb-ring,#FFFCF7)" stroke-width="1.4"/>`;
+  if (pts.length < 2) return { g: dot, defs: '' };
+  const id = 'sg' + ++GID;
+  // the past is neutral, the present is its state: the line itself is the trend
+  const defs = `<linearGradient id="${id}" x1="${X(s).toFixed(1)}" x2="${ex}" y1="0" y2="0" gradientUnits="userSpaceOnUse">`
+    + `<stop offset="0" stop-color="${SP_PAST}"/><stop offset="1" stop-color="${HEX[e.state]}"/></linearGradient>`;
+  const d = pts.map((p, i) => (i ? 'L' : 'M') + X(p).toFixed(1) + ' ' + Y(p.value).toFixed(1)).join(' ');
+  const mids = pts.slice(1, -1).map(p => `<circle cx="${X(p).toFixed(1)}" cy="${Y(p.value).toFixed(1)}" r="${p.kind === 'interim' ? 1.2 : 1.6}" fill="${SP_PAST}"/>`).join('');
+  const g = `<path d="${d}" fill="none" stroke="url(#${id})" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>`
+    + `<circle cx="${X(s).toFixed(1)}" cy="${Y(s.value).toFixed(1)}" r="1.8" fill="var(--rb-ring,#FFFCF7)" stroke="${SP_PAST}" stroke-width="1.25"/>`
+    + mids + dot;
+  return { g, defs };
 }
 
 /* ---------- data for the page ---------- */
@@ -6114,9 +6358,14 @@ const countsLine = states => STATE_ORDER.filter(s => states.includes(s)).map(s =
 const countsText = states => STATE_ORDER.filter(s => states.includes(s)).map(s => `${states.filter(x => x === s).length} ${STATE_LABEL[s].toLowerCase()}`).join(', ');
 
 /** Mini spectrum for a body-system group: one tile per marker (ledger groups, the body map list). */
+/* one tick per marker, in state order - the ledger's group headers and the
+   system picker draw the same strip so the two read as one language */
+function specFromCounts(c) {
+  return `<span class="g-spec" aria-hidden="true">${STATE_ORDER.map(s => `<i class="t-${s}"></i>`.repeat(c[s] || 0)).join('')}</span>`;
+}
 function miniSpec(g) {
   const c = emptyCounts(); g.forEach(m => c[m.latest.state]++);
-  return `<span class="g-spec" aria-hidden="true">${STATE_ORDER.map(s => `<i class="t-${s}"></i>`.repeat(c[s])).join('')}</span>`;
+  return specFromCounts(c);
 }
 
 /* Ambient loops. They are decoration over a ground that already works, so
@@ -6202,9 +6451,16 @@ function targetHero() {
     </figure>
     <div class="scan-copy" data-state="A">
       <div class="sc-cA">
-        <p class="eyebrow">${esc(PRODUCT_NAME)} · ${esc(YEAR)}</p>
-        <h1 id="thH">${esc(S.total)} markers, <em>one picture</em></h1>
-        <div class="byline"><span>Blood drawn <b class="num">${esc(COLLECTED)}</b><br>at ${esc(V.report.labName)}</span></div>
+        <div class="th-card">
+          <p class="eyebrow">${esc(PRODUCT_NAME)}</p>
+          <h1 id="thH">${esc(S.total)} markers,<br><em>one picture</em></h1>
+          <dl class="th-tally" id="thTally">
+            <div><dt>At target</dt><dd class="num" data-k="optimal">${S.byState.optimal}</dd></div>
+            <div><dt>In range</dt><dd class="num" data-k="in_range">${S.byState.in_range}</dd></div>
+            <div><dt>To work on</dt><dd class="num" data-k="attn">${ATTENTION.length}</dd></div>
+          </dl>
+          <p class="th-meta">Blood drawn <b class="num">${esc(COLLECTED)}</b> at ${esc(V.report.labName)}<span class="th-yrnow num" id="thYrNow"></span></p>
+        </div>
       </div>
       ${mv1 ? `<div class="sc-cB" aria-hidden="true">
         <p class="eyebrow">Furthest from ${esc(goalNoun(mv1))} · ${esc(SYSTEM_LABEL[mv1.marker.system])}</p>
@@ -6236,13 +6492,13 @@ function ringsHero() {
       + `<circle class="rg-y" cx="${C}" cy="${C}" r="${r.toFixed(1)}"/></g>`;
   };
   // every marker sits on its year's ring, inside its system's sector
-  const dots = RING_YEARS.map((_, k) => {
+  const dots = RING_YEARS.map((ry, k) => {
     const r = R_AT[k] * 430;
     return sect.map(({ sy, a0, a1 }) => {
       const ms = MARKERS.filter(m => m.marker.system === sy.system);
       return ms.map((m, j) => {
         const t = (j + 1) / (ms.length + 1), a2 = a0 + (a1 - a0) * (0.12 + 0.76 * t);
-        const pt = m.points[k], st = pt && pt.value != null ? pt.state : null;
+        const pt = m.points.find(x => x.examDate === ry.date), st = pt && pt.value != null ? pt.state : null;
         const [x, y] = pol(r, a2);
         const turn = ((a2 + Math.PI / 2) / TAU + 1) % 1;          // 0 at twelve, clockwise
         const d = (turn * 620).toFixed(0);
@@ -6286,7 +6542,7 @@ function ringsHero() {
         <p class="eyebrow">${esc(PRODUCT_NAME)} · ${esc(YEAR)}</p>
         <h1 id="rgH">${esc(S.total)} markers, <em>one picture</em></h1>
         <div class="byline"><span>Blood drawn <b class="num">${esc(COLLECTED)}</b><br>at ${esc(V.report.labName)}</span></div>
-        <div class="capsule"><button type="button" class="solid" data-toast="In the portal this downloads your report as a PDF.">${ICON.dl}Download PDF</button></div>
+        <div class="capsule"><button type="button" class="solid" data-pdf>${ICON.dl}Download PDF</button></div>
         <nav class="sc-stats" aria-label="Your results at a glance">${[[S.healthy, 'markers in a healthy range', '#target', ''], [attention, 'markers to watch this year', '#results', ' data-watch'], [ATTENTION.length, 'results outside our target', '#attention', '']].map(([n, l, h, x]) => `<a href="${h}"${x}><b class="num" data-count="${n}">${n}</b><span>${esc(l)}</span></a>`).join('')}</nav>
       </div>
       <div class="sc-cB" aria-hidden="true">
@@ -6332,7 +6588,7 @@ function scanHero() {
         <p class="eyebrow">${esc(PRODUCT_NAME)} · ${esc(YEAR)}</p>
         <h1 id="scH">${esc(S.total)} markers, <em>one picture</em></h1>
         <div class="byline"><span>Blood drawn <b class="num">${esc(COLLECTED)}</b><br>at ${esc(V.report.labName)}</span></div>
-        <div class="capsule"><button type="button" class="solid" data-toast="In the portal this downloads your report as a PDF.">${ICON.dl}Download PDF</button></div>
+        <div class="capsule"><button type="button" class="solid" data-pdf>${ICON.dl}Download PDF</button></div>
         <nav class="sc-stats" aria-label="Your results at a glance">${stats.map(([n, , l, h, x]) => `<a href="${h}"${x}><b class="num" data-count="${n}">${n}</b><span>${esc(l)}</span></a>`).join('')}</nav>
       </div>
       <div class="sc-cB" aria-hidden="true">
@@ -6362,7 +6618,7 @@ function srail() {
   return `<nav class="srail" aria-label="Sections"><div class="srail-bar">
     <span class="srail-t">${esc(PRODUCT_NAME)} · ${esc(YEAR)}</span>
     <div class="srail-in"><i class="srail-ind" aria-hidden="true"></i></div>
-    <button type="button" class="srail-pdf" data-toast="In the portal this downloads your report as a PDF.">${ICON.dl}Download PDF</button>
+    <button type="button" class="srail-pdf" data-pdf>${ICON.dl}Download PDF</button>
   </div></nav>`;
 }
 
@@ -6456,7 +6712,7 @@ function attentionSection() {
     const head = (fz && FROZEN.length && mv === FROZEN[0] && ACTIONABLE.length)
       ? `<div class="att-sub"><p class="eyebrow">Measured once</p><p>${esc(spell(FROZEN.length))} ${FROZEN.length === 1 ? 'result is' : 'results are'} drawn once in a lifetime. ${FROZEN.length === 1 ? 'It stays' : 'They stay'} on the chart, but ${FROZEN.length === 1 ? 'it is not' : 'they are not'} something the plan moves.</p></div>`
       : '';
-    const hist = mv.points.map((x, k) => `<span class="${k === mv.points.length - 1 ? 'cur' : ''}"><span class="yr">${esc(formatYear(x.examDate))}</span> ${esc(valText(mv, x))}</span>`).join('<span class="ar">→</span>');
+    const hist = mv.points.map((x, k) => `<span class="${k === mv.points.length - 1 ? 'cur' : ''}${x.kind === 'interim' ? ' iv' : ''}"><span class="yr">${esc(x.kind === 'interim' ? formatMonthYear(x.examDate) : formatYear(x.examDate))}</span> ${esc(valText(mv, x))}</span>`).join('<span class="ar">→</span>');
     // six cards, not three: on a phone they all start closed so the section
     // reads as an index, the same rule the ledger's groups follow
     const open = i === 0 && !MQ.phone.matches;
@@ -6513,7 +6769,7 @@ function moved() {
   }).join('');
   return `<section id="progress" class="s-moved">${RING_URI ? '<div class="mv-round" aria-hidden="true"></div>' : ''}<div class="wrap">
     <div class="head split"><div><p class="eyebrow">Progress · ${esc(y0)} to ${esc(YEAR)}</p><h2 class="d2">What moved in the <em>right direction</em></h2></div>
-    <div class="split-r"><p class="lede"><span class="mv-l1">Since last year, <span class="num">${S.improved}</span> markers moved toward your target or lab range.</span><span class="mv-l2"> Below, four of them over two years; the shaded band shows where we want each one to sit.</span></p>
+    <div class="split-r"><p class="lede"><span class="mv-l1">Since last year, <span class="num">${S.improved}</span> markers moved toward your target or lab range.</span><span class="mv-l2"> Below, ${esc(spell(winsPage.length).toLowerCase())} of them over two years; the shaded band shows where we want each one to sit.</span></p>
       <p class="mv-key" aria-hidden="true"><span><i class="k-band"></i>Target band</span>${winsUseLab ? '<span><i class="k-band lab"></i>Lab range</span>' : ''}</p></div></div>
     <div class="charts">${items}</div>
     <button type="button" class="textlink mv-all" data-see="up"><span>See all <span class="num">${S.improved}</span> that improved</span>${ICON.arrow}</button>
@@ -6558,7 +6814,13 @@ function sampleCards() {
 function samples() {
   const nSys = SYSTEMS.length, sp = spell(nSys).toLowerCase();
   const aria = `Illustration of ${spell(SAMPLES.length).toLowerCase()} sample containers: ${SAMPLES.map(c => `${c.label.toLowerCase()}, ${c.tube.toLowerCase()}, ${c.markerCount} marker${c.markerCount === 1 ? '' : 's'}`).join('; ')}.`;
-  const b3 = `<h3 class="vs-h"><em><span class="num" data-count="${S.total}">${S.total}</span> markers</em> across ${sp} systems</h3>`;
+  /* The four tiles count what each container carried, which is 38 - Lp(a) came
+     forward from an earlier draw and belongs to no tube on this page. The
+     headline said 39 a line below them, so the page failed its own addition.
+     It counts the draw when they differ, and the carried note above already
+     says where the other one came from. */
+  const DRAWN = SAMPLES.reduce((n, c) => n + c.markerCount, 0);
+  const b3 = `<h3 class="vs-h"><em><span class="num" data-count="${DRAWN}">${DRAWN}</span> markers</em> ${DRAWN === S.total ? `across ${sp} systems` : `from this draw, across ${sp} systems`}</h3>`;
   const links = `<div class="vs-links"><button type="button" class="textlink" data-sys-list><span>Explore by system</span>${ICON.arrow}</button><a href="#results" class="textlink"><span>See all <span class="num">${S.total}</span> results</span>${ICON.arrow}</a></div>`;
   return `<section id="samples" class="s-samples" data-mode="still" aria-labelledby="vsH">
     <div class="vs-pin"><div class="vs-sticky wrap">
@@ -6649,13 +6911,17 @@ function exampleFig() {
 function ledgerShell() {
   return `<section id="results" class="s-ledger"><div class="wrap">
     <div class="head split"><div><p class="eyebrow">Every result</p><h2 class="d2">All <span class="num">${S.total}</span> <em>biomarkers</em></h2></div>
-    <p class="lede"><span class="lg-from">From your blood draw on ${esc(COLLECTED)} at ${esc(V.report.labName)}. </span><span class="hv">Select</span><span class="tp">Tap</span> any result to see its history and what it means.</p></div>
+    <p class="lede"><span class="lg-from">From your blood draw on ${esc(COLLECTED)} at ${esc(V.report.labName)}. </span><span class="pr-hide"><span class="hv">Select</span><span class="tp">Tap</span> any result to see its history and what it means.</span><span class="pr-only">Each result is shown against the clinic's optimal range; the key below names the colours.</span></p></div>
     <div class="ledger">
       <nav class="toc" id="toc" aria-label="Body systems"></nav>
       <div class="lg-main">
         <div class="toolbar">
           <div class="tb1">
-            <label class="sel-pill"><span class="sr">Body system</span><select id="sys"></select>${ICON.down}</label>
+            <div class="syspick" id="sysPick">
+              <button type="button" class="sp-btn" id="sysBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="sysPop">
+                <span class="sp-cur" id="sysCur">All systems</span><span class="sp-n num" id="sysN">${S.total}</span>${ICON.down}</button>
+              <div class="sp-pop" id="sysPop" role="listbox" tabindex="-1" aria-label="Body system" hidden></div>
+            </div>
             <label class="search">${ICON.search}<span class="sr">Search biomarkers</span><input id="q" type="search" placeholder="Search biomarkers" autocomplete="off" enterkeyhint="search"><button type="button" class="q-x" id="qx" aria-label="Clear search" hidden>${ICON.x}</button><kbd class="slash" aria-hidden="true">/</kbd></label>
           </div>
           <div class="tb2"><div class="tabs" id="tabs" role="toolbar" aria-label="Filter results"></div><div class="tb-ex">${exampleFig()}</div><button type="button" class="tb-find" id="tbFind" aria-label="Search biomarkers">${ICON.search}</button></div>
@@ -6701,7 +6967,29 @@ function renderLedger() {
   $('#toc').innerHTML = `<button type="button" data-sys="" aria-pressed="${!ui.sys}"><span>All systems</span><span class="c num">${S.total}</span></button>` +
     SYSTEMS.map(s => { const n = s.byState.borderline + s.byState.out_of_range;
       return `<button type="button" data-sys="${s.system}" aria-pressed="${ui.sys === s.system}"><span>${esc(s.label)}</span><span class="c num">${n ? `<span class="dot bg-${s.worst}" title="${n} to watch"></span>` : ''}${s.markerIds.length}</span></button>`; }).join('');
-  $('#sys').innerHTML = `<option value="">${MQ.xs.matches ? 'All' : 'All systems'}</option>` + SYSTEMS.map(s => `<option value="${s.system}"${ui.sys === s.system ? ' selected' : ''}>${esc(s.label)} (${s.markerIds.length})</option>`).join('');
+  /* The system filter was a native <select>. On a phone - four views in five -
+     that hands the whole menu to the OS: no counts you can line up, no state,
+     no way to see that Heart & lipids is the one with three results to work
+     on. The list is ours now, and each row carries the same pip strip the
+     ledger's own group headers use, so the menu answers "where should I look
+     first" before you have chosen anything. */
+  const sysRow = (id, label, n, by, worst) => {
+    const att = by ? by.borderline + by.out_of_range : 0;
+    const on = (ui.sys || '') === id;
+    const strip = by ? specFromCounts(by) : '';
+    return `<button type="button" role="option" class="sp-o" data-sys="${esc(id)}" aria-selected="${on}" tabindex="-1">
+      <span class="sp-l">${esc(label)}</span>
+      ${strip}
+      <span class="sp-c num">${att ? `<i class="dot bg-${worst}"></i>` : ''}${n}</span></button>`;
+  };
+  // no strip on the everything row: 39 ticks is a texture, not a reading
+  $('#sysPop').innerHTML = sysRow('', 'All systems', S.total, null, null)
+    + `<div class="sp-sep" role="presentation"></div>`
+    + SYSTEMS.map(s => sysRow(s.system, s.label, s.markerIds.length, s.byState, s.worst)).join('');
+  const curSys = ui.sys ? SYSTEMS.find(x => x.system === ui.sys) : null;
+  $('#sysCur').textContent = curSys ? curSys.label : (MQ.xs.matches ? 'All' : 'All systems');
+  $('#sysN').textContent = curSys ? curSys.markerIds.length : S.total;
+  $('#sysBtn').classList.toggle('on', !!curSys);
   const f = FILTERS.find(x => x.k === ui.f).fn, q = ui.q.trim().toLowerCase();
   const forced = ui.f !== 'all' || !!ui.sys || !!q;
   const hay = m => `${m.marker.name} ${m.marker.long || ''} ${SYSTEM_LABEL[m.marker.system]} ${m.marker.copy.why || ''}`.toLowerCase();
@@ -6751,10 +7039,14 @@ function printSummary() {
     return `<li><span class="ps-n num"><i class="p-pip bg-${mv.latest.state}"></i></span><span class="ps-b"><b>${esc(mv.marker.name)} <span class="num">${esc(valText(mv, mv.latest))}</span>${unitOf(mv) ? ' <span class="ps-u">' + esc(unitOf(mv)) + '</span>' : ''}</b>
       <small>${esc(SYSTEM_LABEL[mv.marker.system])}${d ? ' · ' + esc(distLine(mv)) : ''}</small></span></li>`;
   }).join('');
+  /* On screen a truncated list is a tap away from the rest. On paper "and 2
+     more" is a dead end, so the cap is as high as the sheet holds and the
+     overflow line says where the remainder actually lives. */
+  const PS_CAP = 8;
   return `<section class="p-sum" aria-hidden="true">
     <div class="wrap"><div class="ps-grid">
       <div><h2>${esc(spell(ATTENTION.length))} outside range</h2><ol class="ps-l">${pr}</ol></div>
-      <div><h2>At target</h2><ol class="ps-l ps-dates">${AT_TARGET.slice(0, 8).map(mv => `<li><span class="ps-n num"><i class="p-pip bg-optimal"></i></span><span class="ps-b"><b>${esc(mv.marker.name)} <span class="num">${esc(valText(mv, mv.latest))}</span></b><small>${esc(SYSTEM_LABEL[mv.marker.system])}</small></span></li>`).join('')}</ol>${AT_TARGET.length > 8 ? `<p class="ps-more num">and ${AT_TARGET.length - 8} more</p>` : ''}</div>
+      <div><h2>At target</h2><ol class="ps-l ps-dates">${AT_TARGET.slice(0, PS_CAP).map(mv => `<li><span class="ps-n num"><i class="p-pip bg-optimal"></i></span><span class="ps-b"><b>${esc(mv.marker.name)} <span class="num">${esc(valText(mv, mv.latest))}</span></b><small>${esc(SYSTEM_LABEL[mv.marker.system])}</small></span></li>`).join('')}</ol>${AT_TARGET.length > PS_CAP ? `<p class="ps-more num">and ${AT_TARGET.length - PS_CAP} more at target — every result is listed in full later in this report.</p>` : ''}</div>
     </div>
     <p class="ps-f">${esc(CLINIC.name)} · ${esc(CLINIC.city)} · ${esc(CLINIC.phone)}<span class="sep"> · </span>Blood drawn ${esc(COLLECTED)}</p></div>
   </section>`;
@@ -6798,6 +7090,23 @@ $('#app').innerHTML = (HERO_Q === 'target' ? targetHero() : HERO_Q === 'rings' ?
 }
 renderLedger();
 
+/* Nine of the ten printed sheets carried nothing saying whose results they
+   are. A loose page 5 cannot be re-filed, and two reports printed the same
+   afternoon are indistinguishable once the stacks touch. First name, age and
+   the draw date are what PatientView already holds and are enough to re-file
+   a sheet without putting a new identifier on paper. Fixed position repeats
+   it on every page in print; it must be a direct child of body, because a
+   transform or filter on any ancestor would demote it to that ancestor and
+   it would print once. */
+{
+  const run = document.createElement('div');
+  run.className = 'ps-run';
+  run.setAttribute('aria-hidden', 'true');
+  run.innerHTML = `<span>${esc(V.patient.firstName)} · age <span class="num">${V.patient.ageAtExam}</span> · ${esc(PRODUCT_NAME)}, blood drawn <span class="num">${esc(COLLECTED)}</span></span>`
+    + `<span>${esc(CLINIC.name)} · ${esc(CLINIC.city)} · ${esc(CLINIC.phone)}</span>`;
+  document.body.appendChild(run);
+}
+
 /* ---------- layout pass: charts at real size, rail annotations ---------- */
 function renderChart(el) {
   const w = Math.round(el.clientWidth), h = Math.round(el.clientHeight);
@@ -6811,12 +7120,24 @@ function renderChart(el) {
    last year, the rest) and yield rather than collide. */
 function layRB(rb) {
   const track = rb.querySelector('.rb-track'), W = track ? track.clientWidth : 0; if (!W) return;
+  /* Every offset below is computed from W and written back as a percentage of
+     it, never as a pixel. The pixels were measured once at the on-screen
+     column width and never recomputed, so on paper - where the column is half
+     as wide - the scale numbers walked out of the bar and printed inside the
+     explanation beside it: "1.05" landing in the middle of "cardiovascular
+     risk", and on Lp(a) the value dot itself leaving the bar entirely. A
+     percentage resolves against the same box layRB measured (.mk against
+     .rb-track, .tk/.tc against .rb-below, .zn against .rb-above - all three
+     are exactly W), so the screen is pixel-identical and any later layout at
+     another width scales instead of breaking. This also covers a reader
+     hitting Cmd-P, where no relayout hook runs at all. */
+  const pc = x => (x / W * 100).toFixed(3) + '%';
   const mk = rb.querySelector('.mk');
-  if (rb.classList.contains('ord')) { const c = rb.querySelector('.rb-steps .cur'); if (c && mk) mk.style.left = (c.offsetLeft + c.offsetWidth / 2).toFixed(1) + 'px'; return; }
+  if (rb.classList.contains('ord')) { const c = rb.querySelector('.rb-steps .cur'); if (c && mk) mk.style.left = pc(c.offsetLeft + c.offsetWidth / 2); return; }
   const fit = (el, padPx) => {
     const zl = (+el.dataset.zl / 100) * W, zr = (+el.dataset.zr / 100) * W, x0 = (+el.dataset.x / 100) * W, m = el.offsetWidth / 2 + padPx;
     const x = zr - zl < 2 * m ? (zl + zr) / 2 : clamp(x0, zl + m, zr - m);
-    el.style.left = x.toFixed(1) + 'px'; return x;
+    el.style.left = pc(x); return x;
   };
   const tv = rb.classList.contains('tv');
   const mx = mk ? fit(mk, tv ? 8 : 6.5) : 0;
@@ -6825,7 +7146,7 @@ function layRB(rb) {
   if (pv) { px = fit(pv, 3); const clash = Math.abs(px - mx) < mk.offsetWidth / 2 + 5; pv.style.visibility = clash ? 'hidden' : ''; if (clash) px = null; }
   const above = rb.querySelector('.rb-above'), occ = { a: [], b: [] };
   const place = (el, row, l, cx) => {
-    el.style.left = l.toFixed(1) + 'px'; el.style.transform = 'none'; el.style.visibility = ''; el.style.setProperty('--mx', (cx - l).toFixed(1) + 'px');
+    el.style.left = pc(l); el.style.transform = 'none'; el.style.visibility = ''; el.style.setProperty('--mx', (cx - l).toFixed(1) + 'px');
     occ[row].push([l, l + el.offsetWidth]);
   };
   /* force: the target tick carries the number the whole card is about, so it
@@ -6858,6 +7179,24 @@ function hydrate(root = document) {
   $$('.rb[data-lay]', root).forEach(layRB);
 }
 function layoutAll() { hydrate(document); railFade(); moveInd($('.srail [aria-current]'), true); }
+/* Every chart is drawn at the pixel size of its own box and cached on it, so a
+   print stylesheet that resizes the box leaves the SVG scaled rather than
+   redrawn - on paper the card charts were landing at roughly 5pt type, legible
+   on a screen at 2x and not on a sheet of A4. Drop the cache and redraw on the
+   way into print, and again on the way out so the screen is not left holding
+   paper dimensions. page.pdf() never fires beforeprint, hence the global. */
+function relayoutCharts() { $$('.lc').forEach(el => { el._w = 0; el._h = 0; }); hydrate(document); }
+/* Plates are lazy, so only the ones that had scrolled into view were decoded:
+   three of the six attention cards printed their organ engraving and three
+   printed an empty square, and none of the eleven ledger group headings had
+   one at all. They are data URIs - there is nothing to fetch - so eager is
+   free at print time. */
+function eagerImages() { $$('img[loading="lazy"]').forEach(i => { i.loading = 'eager'; if (!i.complete && i.src) i.src = i.src; }); }
+function preparePrint() { eagerImages(); relayoutCharts(); }
+addEventListener('beforeprint', preparePrint);
+addEventListener('afterprint', relayoutCharts);
+try { const pmq = matchMedia('print'); if (pmq.addEventListener) pmq.addEventListener('change', preparePrint); } catch (e) { /* older engines */ }
+window.relayoutForPrint = preparePrint;
 hydrate(document);
 if (ro) ro.observe(document.body);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { $$('.rb[data-lay]').forEach(layRB); moveInd($('.srail [aria-current]'), true); });
@@ -7192,6 +7531,22 @@ document.addEventListener('click', e => {
   if (e.target.closest('#room')) return;
   const n = e.target.closest('[data-noop]'); if (n) { e.preventDefault(); toast('Sample: other portal pages are not part of this prototype.'); return; }
   const t = e.target.closest('[data-toast]'); if (t) { toast('Sample. ' + t.dataset.toast); return; }
+  /* Download is the browser's own print-to-PDF. There is no server behind this
+     page, so the print stylesheet IS the document: one A4 sheet of priorities,
+     the cards, what moved, the samples, then all 39 results. Every group is
+     forced open for print, so what saves is the whole report, not what happens
+     to be expanded on screen. Some embedded viewers refuse print(); say so
+     rather than appearing to do nothing. */
+  const pdf = e.target.closest('[data-pdf]');
+  if (pdf) {
+    e.preventDefault();
+    try {
+      if (typeof print !== 'function') throw new Error('no print');
+      toast('Opening your print dialog — choose “Save as PDF”.');
+      setTimeout(() => { try { print(); } catch (x) { toast('This viewer blocks printing. Open the report in a browser tab and print from there.'); } }, 180);
+    } catch (x) { toast('This viewer blocks printing. Open the report in a browser tab and print from there.'); }
+    return;
+  }
   const a = e.target.closest('a[href^="#"]');
   if (a && a.getAttribute('href').length > 1) {
     e.preventDefault();
@@ -7216,7 +7571,54 @@ document.addEventListener('click', e => {
 function syncSearch() { $('#qx').hidden = !ui.q; }
 $('#q').addEventListener('input', e => { ui.q = e.target.value; syncSearch(); renderLedger(); keepLedgerInView(); });
 $('#qx').addEventListener('click', () => { ui.q = ''; $('#q').value = ''; syncSearch(); renderLedger(); $('#q').focus(); });
-$('#sys').addEventListener('change', e => setLedgerSys(e.target.value));
+/* ---------- the system picker ----------
+   A listbox, not a menu: one of the options is always the current state, so
+   arrows move a highlight and Enter commits it. Escape and an outside click
+   both close without changing anything, and focus goes back to the button. */
+const sysPick = $('#sysPick'), sysBtn = $('#sysBtn'), sysPop = $('#sysPop');
+let sysAt = -1;
+const sysOpts = () => $$('.sp-o', sysPop);
+function sysMark(i) {
+  const o = sysOpts(); if (!o.length) return;
+  sysAt = clamp(i, 0, o.length - 1);
+  o.forEach((b, k) => b.classList.toggle('at', k === sysAt));
+  const b = o[sysAt];
+  sysPop.setAttribute('aria-activedescendant', b.id || (b.id = 'sp-o-' + sysAt));
+  const pr = sysPop.getBoundingClientRect(), br = b.getBoundingClientRect();
+  if (br.top < pr.top) sysPop.scrollTop -= pr.top - br.top;
+  else if (br.bottom > pr.bottom) sysPop.scrollTop += br.bottom - pr.bottom;
+}
+function sysOpen(on) {
+  if (!sysPick) return;
+  sysPop.hidden = !on;
+  sysPick.classList.toggle('open', on);
+  sysBtn.setAttribute('aria-expanded', String(on));
+  if (on) { const o = sysOpts(); sysMark(Math.max(0, o.findIndex(b => b.getAttribute('aria-selected') === 'true'))); sysPop.focus(); }
+  else { sysPop.removeAttribute('aria-activedescendant'); }
+}
+if (sysPick) {
+  sysBtn.addEventListener('click', () => sysOpen(sysPop.hidden));
+  sysPop.addEventListener('click', e => { const o = e.target.closest('.sp-o'); if (!o) return; sysOpen(false); sysBtn.focus(); setLedgerSys(o.dataset.sys); });
+  sysPop.addEventListener('keydown', e => {
+    const o = sysOpts();
+    if (e.key === 'Escape') { e.preventDefault(); sysOpen(false); sysBtn.focus(); return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); sysMark(sysAt + 1); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); sysMark(sysAt - 1); return; }
+    if (e.key === 'Home') { e.preventDefault(); sysMark(0); return; }
+    if (e.key === 'End') { e.preventDefault(); sysMark(o.length - 1); return; }
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const b = o[sysAt]; if (b) { sysOpen(false); sysBtn.focus(); setLedgerSys(b.dataset.sys); } return; }
+    // type-ahead: a letter jumps to the next system starting with it
+    if (e.key.length === 1 && /\S/.test(e.key)) {
+      const c = e.key.toLowerCase();
+      const from = sysAt + 1;
+      const i = o.findIndex((b, k) => k >= from && b.textContent.trim().toLowerCase().startsWith(c));
+      const j = i >= 0 ? i : o.findIndex(b => b.textContent.trim().toLowerCase().startsWith(c));
+      if (j >= 0) { e.preventDefault(); sysMark(j); }
+    }
+  });
+  addEventListener('pointerdown', e => { if (!sysPop.hidden && !sysPick.contains(e.target)) sysOpen(false); }, true);
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !sysPop.hidden) { sysOpen(false); sysBtn.focus(); } });
+}
 const syncPh = () => { $('#q').placeholder = MQ.phone.matches ? 'Search' : 'Search biomarkers'; };
 syncPh();
 MQ.phone.addEventListener('change', () => { syncPh(); renderLedger(); tbStuck(); });
@@ -8051,6 +8453,16 @@ function mountTargetHero() {
     ariaLabel: `Your longevity target: all ${S.total} markers, each in the ring for its state and grouped by body system`,
     onOpen: id => openDrawer(id),
     onSystem: id => focusSystem(focusSys === id ? null : id, 'target'),
+    /* the card's tally shows the year the chart is showing, so scrubbing never
+       leaves the two contradicting each other */
+    onFrame: (by, u) => {
+      const T = $('#thTally'); if (!T) return;
+      const set = (k, v) => { const el = T.querySelector(`[data-k="${k}"]`); if (el && el.textContent !== String(v)) el.textContent = v; };
+      set('optimal', by.optimal); set('in_range', by.in_range);
+      set('attn', by.borderline + by.out_of_range);
+      const y = $('#thYrNow'), n2 = EXAM_DATES.length;
+      if (y) y.textContent = (n2 > 1 && u < n2 - 1.015) ? `Showing ${formatYear(EXAM_DATES[clamp(Math.round(u), 0, n2 - 1)])}` : '';
+    },
   });
   bx = bxHero;                                  // the ledger and sheets drive the same chart
 

@@ -166,6 +166,12 @@ void main(){
   // Liquids are opaque and shaded as if seen against the cream set: Beer-Lambert
   // through the chord for serum and urine, a scattering core for whole blood.
   // Back faces below the fill line stand in for the liquid's top surface.
+  /* The three straw fluids are Beer-Lambert absorptions. They used to share
+     one spectral ratio (about 1 : 2.7 : 8.5 red:green:blue) at three
+     magnitudes, which is a single hue at three lightnesses - serum, plasma and
+     urine measured 3 degrees apart and read as the same liquid. The ratios
+     differ now: serum stays warm amber, plasma is greyer and cooler, urine
+     transmits more green and reads as pale lemon. */
   const FS_LIQ = `
 uniform float uDim, uOp, uGlow, uFill, uClot, uGel, uTilt, uKind;
 uniform vec3 uHaze;
@@ -197,12 +203,12 @@ void main(){
     // spun plasma: packed red cells, a thin buffy coat, straw plasma above (clearer than serum, no gel)
     vec3 cells = mix(vec3(0.150, 0.022, 0.015), vec3(0.034, 0.0065, 0.0045), smoothstep(0.03, 0.62, th));
     vec3 buffy = mix(vec3(0.840, 0.790, 0.670), vec3(0.640, 0.600, 0.500), th);
-    vec3 pla = creamL * beer(vec3(0.15, 0.42, 1.30), 0.32 + 0.9 * th);
+    vec3 pla = creamL * beer(vec3(0.26, 0.44, 1.00), 0.32 + 0.9 * th);
     float e = 0.02;
     col = mix(cells, buffy, smoothstep(uClot - e, uClot + e, y));
     col = mix(col, pla, smoothstep(uGel - e, uGel + e, y));
   } else {
-    col = creamL * beer(vec3(0.12, 0.33, 1.08), 0.30 + 0.95 * th);
+    col = creamL * beer(vec3(0.08, 0.19, 1.02), 0.30 + 0.95 * th);
   }
   col *= mix(0.70, 1.12, wrap);
   float men = smoothstep(uFill - 0.10, uFill - 0.004, vLP.y) * (1.0 - top);
@@ -332,8 +338,9 @@ void main(){
 <linearGradient id="${u}t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#DCC8A6"/><stop offset="1" stop-color="#EBDEC3"/></linearGradient>
 <linearGradient id="${u}g" x1="0" x2="1"><stop offset="0" stop-color="#5E584C" stop-opacity=".42"/><stop offset=".07" stop-color="#fff" stop-opacity=".05"/><stop offset=".2" stop-color="#fff" stop-opacity=".72"/><stop offset=".3" stop-color="#fff" stop-opacity=".04"/><stop offset=".8" stop-color="#fff" stop-opacity=".04"/><stop offset=".86" stop-color="#F4F8EF" stop-opacity=".6"/><stop offset=".93" stop-color="#fff" stop-opacity=".05"/><stop offset="1" stop-color="#5E584C" stop-opacity=".45"/></linearGradient>
 <linearGradient id="${u}b" x1="0" x2="1"><stop offset="0" stop-color="#8A3026"/><stop offset=".22" stop-color="#521611"/><stop offset=".7" stop-color="#3B0E0B"/><stop offset="1" stop-color="#6E2219"/></linearGradient>
-<linearGradient id="${u}s" x1="0" x2="1"><stop offset="0" stop-color="#F4DE9E"/><stop offset=".45" stop-color="#E6C06A"/><stop offset="1" stop-color="#EFD28A"/></linearGradient>
-<linearGradient id="${u}u" x1="0" x2="1"><stop offset="0" stop-color="#F6E7B4"/><stop offset=".5" stop-color="#EDD27F"/><stop offset="1" stop-color="#F3DEA0"/></linearGradient>
+<linearGradient id="${u}s" x1="0" x2="1"><stop offset="0" stop-color="#EFD27F"/><stop offset=".45" stop-color="#DCAE43"/><stop offset="1" stop-color="#E8C367"/></linearGradient>
+<linearGradient id="${u}u" x1="0" x2="1"><stop offset="0" stop-color="#FBF9DC"/><stop offset=".5" stop-color="#F2F0B2"/><stop offset="1" stop-color="#F7F5CA"/></linearGradient>
+<linearGradient id="${u}m" x1="0" x2="1"><stop offset="0" stop-color="#E4DCBC"/><stop offset=".45" stop-color="#CDC091"/><stop offset="1" stop-color="#DCD3AE"/></linearGradient>
 <linearGradient id="${u}p" x1="0" x2="1"><stop offset="0" stop-color="#D9D3C6"/><stop offset=".25" stop-color="#FBF8F1"/><stop offset="1" stop-color="#F3EFE6"/></linearGradient>
 <linearGradient id="${u}c" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".16"/><stop offset=".22" stop-color="#fff" stop-opacity=".30"/><stop offset=".4" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".22"/></linearGradient>
 <radialGradient id="${u}h"><stop offset="0" stop-color="#3E3A2C" stop-opacity=".34"/><stop offset=".6" stop-color="#3E3A2C" stop-opacity=".12"/><stop offset="1" stop-color="#3E3A2C" stop-opacity="0"/></radialGradient>
@@ -366,7 +373,7 @@ ${cup.states.map((st, i) => `<rect x="${cx - 48 + i * 7}" y="${Y(4.6) + 64}" wid
     tubes.forEach((c, i) => {
       const x = X[i], t = 23, lqTop = Y(c.k.fill + BASE_H), lbl0 = Y(7.0), lbl1 = Y(3.1), sst = c.k.liquid === 1, pla = c.k.liquid === 3;
       const lw = 34, n = c.states.length, th = Math.min(4, (lbl1 - lbl0 - 16) / Math.max(1, n) - 1);
-      s += `<g><rect x="${x - t + 2}" y="${lqTop}" width="${2 * t - 4}" height="${360 - lqTop}" fill="url(#${u}${sst || pla ? 's' : 'b'})"/>
+      s += `<g><rect x="${x - t + 2}" y="${lqTop}" width="${2 * t - 4}" height="${360 - lqTop}" fill="url(#${u}${sst ? 's' : pla ? 'm' : 'b'})"/>
 ${pla ? `<rect x="${x - t + 2}" y="${Y(3.74)}" width="${2 * t - 4}" height="${f(Y(3.65) - Y(3.74))}" fill="#ECE5D4"/><rect x="${x - t + 2}" y="${Y(3.65)}" width="${2 * t - 4}" height="${f(360 - Y(3.65))}" fill="url(#${u}b)"/>` : ''}
 ${sst ? `<rect x="${x - t + 2}" y="${Y(4.15)}" width="${2 * t - 4}" height="${f(Y(3.35) - Y(4.15))}" fill="#E8E1CC"/><rect x="${x - t + 2}" y="${Y(3.35)}" width="${2 * t - 4}" height="${f(360 - Y(3.35))}" fill="url(#${u}b)"/>` : ''}
 <rect x="${x - t + 2}" y="${lqTop - 1}" width="${2 * t - 4}" height="3" fill="#fff" fill-opacity="${sst || pla ? .55 : .25}"/>

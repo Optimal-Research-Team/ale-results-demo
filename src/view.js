@@ -210,6 +210,14 @@ function gridTicks(lo, hi) {
   return best.t.length > 4 ? best.t.filter((_, i) => i % 2 === 0) : best.t;
 }
 let GID = 0;
+/* Charts are scaled in time, not in exam number. For a marker drawn once a
+   year the two are identical, which is why this went unnoticed; the moment a
+   marker is rechecked off-cadence, index spacing draws a six-month gap the
+   same width as a twelve-month one and puts the recheck on top of the next
+   annual point. T0/T1 span the assessments, so the annual marks stay exactly
+   where they have always been and interim readings fall between them. */
+const T0 = dayNum(EXAM_DATES[0]), T1 = dayNum(EXAM_DATES[EXAM_DATES.length - 1]);
+const tFrac = iso => (T1 > T0 ? clamp((dayNum(iso) - T0) / (T1 - T0), 0, 1) : 0.5);
 function lineChart(mv, { w, h, variant = 'card' } = {}) {
   const c = CH[variant] || CH.card, dark = variant.startsWith('tv');
   const pts = mv.points.filter(p => p.value != null);
@@ -217,7 +225,7 @@ function lineChart(mv, { w, h, variant = 'card' } = {}) {
   const lastTxt = pts.length ? valText(mv, pts[pts.length - 1]) : '';
   const padR = c.lastSide ? Math.max(c.padR, Math.ceil(lastTxt.length * c.last * 0.6) + 12) : c.padR;
   const iw = w - c.padL - padR, ih = h - c.padT - c.padB;
-  const X = i => c.padL + (n === 1 ? iw / 2 : (i / (n - 1)) * iw);
+  const X = t => c.padL + (n === 1 ? iw / 2 : t * iw);
   const vals = pts.map(p => p.value);
   let a = Math.min(...vals), b = Math.max(...vals);
   let far = 0; // -1 the target sits below the frame, +1 above it
@@ -232,7 +240,7 @@ function lineChart(mv, { w, h, variant = 'card' } = {}) {
   const col = dark
     ? { line: '#FFFCF7', sub: 'rgba(255,252,247,.66)', strong: '#FFFCF7', base: 'rgba(255,252,247,.22)', fill: tg ? 'rgba(164,194,157,.24)' : 'rgba(255,252,247,.08)', edge: tg ? 'rgba(164,194,157,.7)' : 'rgba(255,252,247,.35)', lab: 'rgba(255,252,247,.85)', bg: '#1C3118', grid: 'rgba(255,252,247,.08)' }
     : { line: '#2C4E25', sub: '#76736D', strong: '#252525', base: '#DDDCDB', fill: tg ? 'rgba(135,164,130,.20)' : 'rgba(118,115,109,.12)', edge: tg ? 'rgba(44,78,37,.38)' : 'rgba(118,115,109,.40)', lab: tg ? '#1A500F' : '#474747', bg: '#FFFCF7', grid: '#EEEAE3' };
-  const P = pts.map(p => [X(EXAM_DATES.indexOf(p.examDate)), Y(p.value)]);
+  const P = pts.map(p => [X(tFrac(p.examDate)), Y(p.value)]);
   const font = 'font-family="Inter,sans-serif"';
   const T = (x, y, s, fs, fill, anchor = 'start', weight = 400, cls = '') => `<text${cls ? ` class="${cls}"` : ''} x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anchor}" font-size="${fs}" font-weight="${weight}" fill="${fill}" ${font} style="font-variant-numeric:tabular-nums">${esc(s)}</text>`;
   const HL = (y, stroke, sw = 1) => `<line x1="${c.padL}" x2="${(c.padL + iw).toFixed(1)}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${stroke}" stroke-width="${sw}"/>`;
@@ -306,6 +314,8 @@ function lineChart(mv, { w, h, variant = 'card' } = {}) {
     const last = i === pts.length - 1, [cx, cy] = P[i];
     if (!last && i !== 0 && c.midPts === false) return;
     if (last) out += `<circle class="lp" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${variant === 'mini' ? 3.75 : dark ? 8 : 5}" fill="${dark ? HUE_DARK[p.state] : HEX[p.state]}" stroke="${col.bg}" stroke-width="${dark ? 3 : 2.5}"/>`;
+    // an interim recheck is a lighter mark than an assessment: same line, less weight
+    else if (p.kind === 'interim') out += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${dark ? 3.5 : 2}" fill="${col.bg}" stroke="${col.sub}" stroke-width="${dark ? 2 : 1.25}"/>`;
     else out += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${dark ? 5 : 2.75}" fill="${col.bg}" stroke="${col.line}" stroke-width="${dark ? 2.5 : 1.5}"/>`;
     const mode = c.labels;
     if (mode === 'none' || (mode === 'ends' && !last && i !== 0) || (mode === 'notlast' && last)) return;
@@ -322,13 +332,14 @@ function lineChart(mv, { w, h, variant = 'card' } = {}) {
     const tx = i === 0 && P.length > 1 ? Math.max(cx - 2, 0) : last && P.length > 1 ? Math.min(cx + 2, w) : cx;
     out += T(tx, ty, valText(mv, p), fs, last ? lastCol : col.sub, anchor, last ? 600 : 400);
   });
-  const plotted = new Set(pts.map(p => EXAM_DATES.indexOf(p.examDate)));
+  // the axis names the assessments; an interim reading is dated in its own label
+  const plotted = new Set(pts.map(p => p.examDate));
   if (c.yr) EXAM_DATES.forEach((e, i) => {
-    if (c.yrs === 'ends' && i !== 0 && i !== n - 1 && !plotted.has(i)) return;
+    if (c.yrs === 'ends' && i !== 0 && i !== n - 1 && !plotted.has(e)) return;
     const anchor = i === 0 ? 'start' : i === n - 1 ? (c.lastSide ? 'middle' : 'end') : 'middle';
-    out += T(X(i), h - (dark ? 10 : 6), formatYear(e), c.yr, col.sub, anchor);
+    out += T(X(tFrac(e)), h - (dark ? 10 : 6), formatYear(e), c.yr, col.sub, anchor);
   });
-  const aria = `${mv.marker.name}: ${pts.map(p => `${valText(mv, p)} in ${formatYear(p.examDate)}`).join(', ')}.${g ? ` ${tg ? 'Target' : 'Lab range'} ${targetText(mv)}.` : ''}`;
+  const aria = `${mv.marker.name}: ${pts.map(p => `${valText(mv, p)} in ${p.kind === 'interim' ? formatMonthYear(p.examDate) : formatYear(p.examDate)}`).join(', ')}.${g ? ` ${tg ? 'Target' : 'Lab range'} ${targetText(mv)}.` : ''}`;
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(aria)}">${defs ? `<defs>${defs}</defs>` : ''}${out}</svg>`;
 }
 /* Ledger "since 2025" sparkline: 56×20, the line plus a dashed reference at
@@ -348,8 +359,17 @@ function spark(mv) {
   const W = 56, H = 20, TOP = 6.5, BOT = 13.5, PAD = 2;
   if (mv.carriedForward) return `<span class="tw tw-once">Once · ${esc(formatYear(mv.latest.examDate))}</span>`;
   const word = `<span class="tw tw-${mv.trend}">${TREND[mv.trend] || ''}</span>`;
-  const band = (y0, y1, good) => `<rect x="0" y="${y0.toFixed(1)}" width="${W}" height="${(y1 - y0).toFixed(1)}" fill="${good ? 'rgba(44,78,37,.17)' : 'rgba(118,115,109,.09)'}"/>`;
-  const wrap = inner => `<svg class="sp" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">${inner}</svg>${word}`;
+  /* The band used to be a flat rect bleeding to all four edges, which read as
+     "half this box is tinted" rather than as a target. It gets a hairline on
+     each edge that is actually an edge - the open side of an open-ended band
+     has none - and that single line is what makes the strip legible. */
+  const edge = good => (good ? 'rgba(44,78,37,.55)' : 'rgba(118,115,109,.42)');
+  const rule = (y, good) => `<line x1="0" x2="${W}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${edge(good)}" stroke-width="1"/>`;
+  // the boundary carries the band, not the fill: a strong edge over a faint
+  // wash reads as a zone, where a flat block read as a tinted half-box
+  const band = (y0, y1, good) => `<rect x="0" y="${y0.toFixed(1)}" width="${W}" height="${(y1 - y0).toFixed(1)}" fill="${good ? 'rgba(44,78,37,.13)' : 'rgba(118,115,109,.075)'}"/>`
+    + (y0 > 0.01 ? rule(y0, good) : '') + (y1 < H - 0.01 ? rule(y1, good) : '');
+  const wrap = (inner, defs) => `<svg class="sp" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">${defs ? `<defs>${defs}</defs>` : ''}${inner}</svg>${word}`;
 
   const pts = mv.points.filter(p => p.value != null);
   if (!pts.length) return `<span class="sp-none" aria-hidden="true"></span>${word}`;
@@ -363,7 +383,7 @@ function spark(mv) {
     const strip = good.length
       ? band(yOf(Math.max(...good)) - (H - PAD * 2) / (n * 2), yOf(Math.min(...good)) + (H - PAD * 2) / (n * 2), true) : '';
     const cur = mv.latest.value;
-    return wrap(`${strip}<circle cx="${(W / 2).toFixed(1)}" cy="${yOf(cur).toFixed(1)}" r="3.5" fill="${HEX[mv.latest.state]}"/>`);
+    return wrap(`${strip}<circle cx="${(W / 2).toFixed(1)}" cy="${yOf(cur).toFixed(1)}" r="3.1" fill="${HEX[mv.latest.state]}" stroke="var(--rb-ring,#FFFCF7)" stroke-width="1.4"/>`);
   }
 
   const g = goalOf(mv), dom = mv.bands.domain, bl = bandList(mv.bands);
@@ -373,7 +393,8 @@ function spark(mv) {
     const sp = Math.max(hi - lo, Math.abs(hi) * 0.08) * 1.4 || 1;
     const mid = (lo + hi) / 2;
     const Y = v => H / 2 - ((v - mid) / sp) * (H - PAD * 2);
-    return wrap(series(pts, Y, mv));
+    const r = series(pts, Y, mv);
+    return wrap(r.g, r.defs);
   }
 
   const openLo = g.lo <= dom[0] + 1e-9, openHi = g.open || g.hi >= dom[1] - 1e-9;
@@ -398,21 +419,36 @@ function spark(mv) {
     Y = v => v < g.lo ? BOT + sat((g.lo - v) / unit) * (H - PAD - BOT)
       : BOT - sat((v - g.lo) / unit) * BOT;
   }
-  return wrap(strip + series(pts, Y, mv));
+  const sp = series(pts, Y, mv);
+  return wrap(strip + sp.g, sp.defs);
 }
 
 /* the series itself: the path when there is history, and always a seated
-   endpoint - a first assessment draws one dot on its band, not an empty box */
+   endpoint - a first assessment draws one dot on its band, not an empty box.
+   It used to be a flat dark line between an outsized hollow dot and an
+   outsized filled one, running edge to edge: at 56x20 the punctuation
+   outweighed the line. The line now carries the meaning - it starts neutral
+   and arrives in the colour of today's state - and the marks are small enough
+   to read as marks. */
+const SPX = t => 5 + t * 46;                     // 5 .. 51 inside a 56 box
+const SP_PAST = '#97928A';
 function series(pts, Y, mv) {
-  const W = 56;
-  const e = pts[pts.length - 1], s = pts[0];
   const n = EXAM_DATES.length;
-  const X = p => (n < 2 ? W / 2 : 4 + (EXAM_DATES.indexOf(p.examDate) / (n - 1)) * (W - 8));
-  const line = pts.length > 1
-    ? `<path d="${pts.map((p, i) => (i ? 'L' : 'M') + X(p).toFixed(1) + ' ' + Y(p.value).toFixed(1)).join(' ')}" fill="none" stroke="#474747" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`
-      + `<circle cx="${X(s).toFixed(1)}" cy="${Y(s.value).toFixed(1)}" r="2" fill="var(--rb-ring,#FFFCF7)" stroke="#474747" stroke-width="1.25"/>`
-    : '';
-  return `${line}<circle cx="${X(e).toFixed(1)}" cy="${Y(e.value).toFixed(1)}" r="3.5" fill="${HEX[e.state]}"/>`;
+  const e = pts[pts.length - 1], s = pts[0];
+  const X = p => (n < 2 ? 28 : SPX(tFrac(p.examDate)));
+  const ex = X(e).toFixed(1), ey = Y(e.value).toFixed(1);
+  const dot = `<circle cx="${ex}" cy="${ey}" r="3.1" fill="${HEX[e.state]}" stroke="var(--rb-ring,#FFFCF7)" stroke-width="1.4"/>`;
+  if (pts.length < 2) return { g: dot, defs: '' };
+  const id = 'sg' + ++GID;
+  // the past is neutral, the present is its state: the line itself is the trend
+  const defs = `<linearGradient id="${id}" x1="${X(s).toFixed(1)}" x2="${ex}" y1="0" y2="0" gradientUnits="userSpaceOnUse">`
+    + `<stop offset="0" stop-color="${SP_PAST}"/><stop offset="1" stop-color="${HEX[e.state]}"/></linearGradient>`;
+  const d = pts.map((p, i) => (i ? 'L' : 'M') + X(p).toFixed(1) + ' ' + Y(p.value).toFixed(1)).join(' ');
+  const mids = pts.slice(1, -1).map(p => `<circle cx="${X(p).toFixed(1)}" cy="${Y(p.value).toFixed(1)}" r="${p.kind === 'interim' ? 1.2 : 1.6}" fill="${SP_PAST}"/>`).join('');
+  const g = `<path d="${d}" fill="none" stroke="url(#${id})" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>`
+    + `<circle cx="${X(s).toFixed(1)}" cy="${Y(s.value).toFixed(1)}" r="1.8" fill="var(--rb-ring,#FFFCF7)" stroke="${SP_PAST}" stroke-width="1.25"/>`
+    + mids + dot;
+  return { g, defs };
 }
 
 /* ---------- data for the page ---------- */
@@ -467,9 +503,14 @@ const countsLine = states => STATE_ORDER.filter(s => states.includes(s)).map(s =
 const countsText = states => STATE_ORDER.filter(s => states.includes(s)).map(s => `${states.filter(x => x === s).length} ${STATE_LABEL[s].toLowerCase()}`).join(', ');
 
 /** Mini spectrum for a body-system group: one tile per marker (ledger groups, the body map list). */
+/* one tick per marker, in state order - the ledger's group headers and the
+   system picker draw the same strip so the two read as one language */
+function specFromCounts(c) {
+  return `<span class="g-spec" aria-hidden="true">${STATE_ORDER.map(s => `<i class="t-${s}"></i>`.repeat(c[s] || 0)).join('')}</span>`;
+}
 function miniSpec(g) {
   const c = emptyCounts(); g.forEach(m => c[m.latest.state]++);
-  return `<span class="g-spec" aria-hidden="true">${STATE_ORDER.map(s => `<i class="t-${s}"></i>`.repeat(c[s])).join('')}</span>`;
+  return specFromCounts(c);
 }
 
 /* Ambient loops. They are decoration over a ground that already works, so
@@ -555,9 +596,16 @@ function targetHero() {
     </figure>
     <div class="scan-copy" data-state="A">
       <div class="sc-cA">
-        <p class="eyebrow">${esc(PRODUCT_NAME)} · ${esc(YEAR)}</p>
-        <h1 id="thH">${esc(S.total)} markers, <em>one picture</em></h1>
-        <div class="byline"><span>Blood drawn <b class="num">${esc(COLLECTED)}</b><br>at ${esc(V.report.labName)}</span></div>
+        <div class="th-card">
+          <p class="eyebrow">${esc(PRODUCT_NAME)}</p>
+          <h1 id="thH">${esc(S.total)} markers,<br><em>one picture</em></h1>
+          <dl class="th-tally" id="thTally">
+            <div><dt>At target</dt><dd class="num" data-k="optimal">${S.byState.optimal}</dd></div>
+            <div><dt>In range</dt><dd class="num" data-k="in_range">${S.byState.in_range}</dd></div>
+            <div><dt>To work on</dt><dd class="num" data-k="attn">${ATTENTION.length}</dd></div>
+          </dl>
+          <p class="th-meta">Blood drawn <b class="num">${esc(COLLECTED)}</b> at ${esc(V.report.labName)}<span class="th-yrnow num" id="thYrNow"></span></p>
+        </div>
       </div>
       ${mv1 ? `<div class="sc-cB" aria-hidden="true">
         <p class="eyebrow">Furthest from ${esc(goalNoun(mv1))} · ${esc(SYSTEM_LABEL[mv1.marker.system])}</p>
@@ -589,13 +637,13 @@ function ringsHero() {
       + `<circle class="rg-y" cx="${C}" cy="${C}" r="${r.toFixed(1)}"/></g>`;
   };
   // every marker sits on its year's ring, inside its system's sector
-  const dots = RING_YEARS.map((_, k) => {
+  const dots = RING_YEARS.map((ry, k) => {
     const r = R_AT[k] * 430;
     return sect.map(({ sy, a0, a1 }) => {
       const ms = MARKERS.filter(m => m.marker.system === sy.system);
       return ms.map((m, j) => {
         const t = (j + 1) / (ms.length + 1), a2 = a0 + (a1 - a0) * (0.12 + 0.76 * t);
-        const pt = m.points[k], st = pt && pt.value != null ? pt.state : null;
+        const pt = m.points.find(x => x.examDate === ry.date), st = pt && pt.value != null ? pt.state : null;
         const [x, y] = pol(r, a2);
         const turn = ((a2 + Math.PI / 2) / TAU + 1) % 1;          // 0 at twelve, clockwise
         const d = (turn * 620).toFixed(0);
@@ -639,7 +687,7 @@ function ringsHero() {
         <p class="eyebrow">${esc(PRODUCT_NAME)} · ${esc(YEAR)}</p>
         <h1 id="rgH">${esc(S.total)} markers, <em>one picture</em></h1>
         <div class="byline"><span>Blood drawn <b class="num">${esc(COLLECTED)}</b><br>at ${esc(V.report.labName)}</span></div>
-        <div class="capsule"><button type="button" class="solid" data-toast="In the portal this downloads your report as a PDF.">${ICON.dl}Download PDF</button></div>
+        <div class="capsule"><button type="button" class="solid" data-pdf>${ICON.dl}Download PDF</button></div>
         <nav class="sc-stats" aria-label="Your results at a glance">${[[S.healthy, 'markers in a healthy range', '#target', ''], [attention, 'markers to watch this year', '#results', ' data-watch'], [ATTENTION.length, 'results outside our target', '#attention', '']].map(([n, l, h, x]) => `<a href="${h}"${x}><b class="num" data-count="${n}">${n}</b><span>${esc(l)}</span></a>`).join('')}</nav>
       </div>
       <div class="sc-cB" aria-hidden="true">
@@ -685,7 +733,7 @@ function scanHero() {
         <p class="eyebrow">${esc(PRODUCT_NAME)} · ${esc(YEAR)}</p>
         <h1 id="scH">${esc(S.total)} markers, <em>one picture</em></h1>
         <div class="byline"><span>Blood drawn <b class="num">${esc(COLLECTED)}</b><br>at ${esc(V.report.labName)}</span></div>
-        <div class="capsule"><button type="button" class="solid" data-toast="In the portal this downloads your report as a PDF.">${ICON.dl}Download PDF</button></div>
+        <div class="capsule"><button type="button" class="solid" data-pdf>${ICON.dl}Download PDF</button></div>
         <nav class="sc-stats" aria-label="Your results at a glance">${stats.map(([n, , l, h, x]) => `<a href="${h}"${x}><b class="num" data-count="${n}">${n}</b><span>${esc(l)}</span></a>`).join('')}</nav>
       </div>
       <div class="sc-cB" aria-hidden="true">
@@ -715,7 +763,7 @@ function srail() {
   return `<nav class="srail" aria-label="Sections"><div class="srail-bar">
     <span class="srail-t">${esc(PRODUCT_NAME)} · ${esc(YEAR)}</span>
     <div class="srail-in"><i class="srail-ind" aria-hidden="true"></i></div>
-    <button type="button" class="srail-pdf" data-toast="In the portal this downloads your report as a PDF.">${ICON.dl}Download PDF</button>
+    <button type="button" class="srail-pdf" data-pdf>${ICON.dl}Download PDF</button>
   </div></nav>`;
 }
 
@@ -809,7 +857,7 @@ function attentionSection() {
     const head = (fz && FROZEN.length && mv === FROZEN[0] && ACTIONABLE.length)
       ? `<div class="att-sub"><p class="eyebrow">Measured once</p><p>${esc(spell(FROZEN.length))} ${FROZEN.length === 1 ? 'result is' : 'results are'} drawn once in a lifetime. ${FROZEN.length === 1 ? 'It stays' : 'They stay'} on the chart, but ${FROZEN.length === 1 ? 'it is not' : 'they are not'} something the plan moves.</p></div>`
       : '';
-    const hist = mv.points.map((x, k) => `<span class="${k === mv.points.length - 1 ? 'cur' : ''}"><span class="yr">${esc(formatYear(x.examDate))}</span> ${esc(valText(mv, x))}</span>`).join('<span class="ar">→</span>');
+    const hist = mv.points.map((x, k) => `<span class="${k === mv.points.length - 1 ? 'cur' : ''}${x.kind === 'interim' ? ' iv' : ''}"><span class="yr">${esc(x.kind === 'interim' ? formatMonthYear(x.examDate) : formatYear(x.examDate))}</span> ${esc(valText(mv, x))}</span>`).join('<span class="ar">→</span>');
     // six cards, not three: on a phone they all start closed so the section
     // reads as an index, the same rule the ledger's groups follow
     const open = i === 0 && !MQ.phone.matches;
@@ -866,7 +914,7 @@ function moved() {
   }).join('');
   return `<section id="progress" class="s-moved">${RING_URI ? '<div class="mv-round" aria-hidden="true"></div>' : ''}<div class="wrap">
     <div class="head split"><div><p class="eyebrow">Progress · ${esc(y0)} to ${esc(YEAR)}</p><h2 class="d2">What moved in the <em>right direction</em></h2></div>
-    <div class="split-r"><p class="lede"><span class="mv-l1">Since last year, <span class="num">${S.improved}</span> markers moved toward your target or lab range.</span><span class="mv-l2"> Below, four of them over two years; the shaded band shows where we want each one to sit.</span></p>
+    <div class="split-r"><p class="lede"><span class="mv-l1">Since last year, <span class="num">${S.improved}</span> markers moved toward your target or lab range.</span><span class="mv-l2"> Below, ${esc(spell(winsPage.length).toLowerCase())} of them over two years; the shaded band shows where we want each one to sit.</span></p>
       <p class="mv-key" aria-hidden="true"><span><i class="k-band"></i>Target band</span>${winsUseLab ? '<span><i class="k-band lab"></i>Lab range</span>' : ''}</p></div></div>
     <div class="charts">${items}</div>
     <button type="button" class="textlink mv-all" data-see="up"><span>See all <span class="num">${S.improved}</span> that improved</span>${ICON.arrow}</button>
@@ -911,7 +959,13 @@ function sampleCards() {
 function samples() {
   const nSys = SYSTEMS.length, sp = spell(nSys).toLowerCase();
   const aria = `Illustration of ${spell(SAMPLES.length).toLowerCase()} sample containers: ${SAMPLES.map(c => `${c.label.toLowerCase()}, ${c.tube.toLowerCase()}, ${c.markerCount} marker${c.markerCount === 1 ? '' : 's'}`).join('; ')}.`;
-  const b3 = `<h3 class="vs-h"><em><span class="num" data-count="${S.total}">${S.total}</span> markers</em> across ${sp} systems</h3>`;
+  /* The four tiles count what each container carried, which is 38 - Lp(a) came
+     forward from an earlier draw and belongs to no tube on this page. The
+     headline said 39 a line below them, so the page failed its own addition.
+     It counts the draw when they differ, and the carried note above already
+     says where the other one came from. */
+  const DRAWN = SAMPLES.reduce((n, c) => n + c.markerCount, 0);
+  const b3 = `<h3 class="vs-h"><em><span class="num" data-count="${DRAWN}">${DRAWN}</span> markers</em> ${DRAWN === S.total ? `across ${sp} systems` : `from this draw, across ${sp} systems`}</h3>`;
   const links = `<div class="vs-links"><button type="button" class="textlink" data-sys-list><span>Explore by system</span>${ICON.arrow}</button><a href="#results" class="textlink"><span>See all <span class="num">${S.total}</span> results</span>${ICON.arrow}</a></div>`;
   return `<section id="samples" class="s-samples" data-mode="still" aria-labelledby="vsH">
     <div class="vs-pin"><div class="vs-sticky wrap">
@@ -1002,13 +1056,17 @@ function exampleFig() {
 function ledgerShell() {
   return `<section id="results" class="s-ledger"><div class="wrap">
     <div class="head split"><div><p class="eyebrow">Every result</p><h2 class="d2">All <span class="num">${S.total}</span> <em>biomarkers</em></h2></div>
-    <p class="lede"><span class="lg-from">From your blood draw on ${esc(COLLECTED)} at ${esc(V.report.labName)}. </span><span class="hv">Select</span><span class="tp">Tap</span> any result to see its history and what it means.</p></div>
+    <p class="lede"><span class="lg-from">From your blood draw on ${esc(COLLECTED)} at ${esc(V.report.labName)}. </span><span class="pr-hide"><span class="hv">Select</span><span class="tp">Tap</span> any result to see its history and what it means.</span><span class="pr-only">Each result is shown against the clinic's optimal range; the key below names the colours.</span></p></div>
     <div class="ledger">
       <nav class="toc" id="toc" aria-label="Body systems"></nav>
       <div class="lg-main">
         <div class="toolbar">
           <div class="tb1">
-            <label class="sel-pill"><span class="sr">Body system</span><select id="sys"></select>${ICON.down}</label>
+            <div class="syspick" id="sysPick">
+              <button type="button" class="sp-btn" id="sysBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="sysPop">
+                <span class="sp-cur" id="sysCur">All systems</span><span class="sp-n num" id="sysN">${S.total}</span>${ICON.down}</button>
+              <div class="sp-pop" id="sysPop" role="listbox" tabindex="-1" aria-label="Body system" hidden></div>
+            </div>
             <label class="search">${ICON.search}<span class="sr">Search biomarkers</span><input id="q" type="search" placeholder="Search biomarkers" autocomplete="off" enterkeyhint="search"><button type="button" class="q-x" id="qx" aria-label="Clear search" hidden>${ICON.x}</button><kbd class="slash" aria-hidden="true">/</kbd></label>
           </div>
           <div class="tb2"><div class="tabs" id="tabs" role="toolbar" aria-label="Filter results"></div><div class="tb-ex">${exampleFig()}</div><button type="button" class="tb-find" id="tbFind" aria-label="Search biomarkers">${ICON.search}</button></div>
@@ -1054,7 +1112,29 @@ function renderLedger() {
   $('#toc').innerHTML = `<button type="button" data-sys="" aria-pressed="${!ui.sys}"><span>All systems</span><span class="c num">${S.total}</span></button>` +
     SYSTEMS.map(s => { const n = s.byState.borderline + s.byState.out_of_range;
       return `<button type="button" data-sys="${s.system}" aria-pressed="${ui.sys === s.system}"><span>${esc(s.label)}</span><span class="c num">${n ? `<span class="dot bg-${s.worst}" title="${n} to watch"></span>` : ''}${s.markerIds.length}</span></button>`; }).join('');
-  $('#sys').innerHTML = `<option value="">${MQ.xs.matches ? 'All' : 'All systems'}</option>` + SYSTEMS.map(s => `<option value="${s.system}"${ui.sys === s.system ? ' selected' : ''}>${esc(s.label)} (${s.markerIds.length})</option>`).join('');
+  /* The system filter was a native <select>. On a phone - four views in five -
+     that hands the whole menu to the OS: no counts you can line up, no state,
+     no way to see that Heart & lipids is the one with three results to work
+     on. The list is ours now, and each row carries the same pip strip the
+     ledger's own group headers use, so the menu answers "where should I look
+     first" before you have chosen anything. */
+  const sysRow = (id, label, n, by, worst) => {
+    const att = by ? by.borderline + by.out_of_range : 0;
+    const on = (ui.sys || '') === id;
+    const strip = by ? specFromCounts(by) : '';
+    return `<button type="button" role="option" class="sp-o" data-sys="${esc(id)}" aria-selected="${on}" tabindex="-1">
+      <span class="sp-l">${esc(label)}</span>
+      ${strip}
+      <span class="sp-c num">${att ? `<i class="dot bg-${worst}"></i>` : ''}${n}</span></button>`;
+  };
+  // no strip on the everything row: 39 ticks is a texture, not a reading
+  $('#sysPop').innerHTML = sysRow('', 'All systems', S.total, null, null)
+    + `<div class="sp-sep" role="presentation"></div>`
+    + SYSTEMS.map(s => sysRow(s.system, s.label, s.markerIds.length, s.byState, s.worst)).join('');
+  const curSys = ui.sys ? SYSTEMS.find(x => x.system === ui.sys) : null;
+  $('#sysCur').textContent = curSys ? curSys.label : (MQ.xs.matches ? 'All' : 'All systems');
+  $('#sysN').textContent = curSys ? curSys.markerIds.length : S.total;
+  $('#sysBtn').classList.toggle('on', !!curSys);
   const f = FILTERS.find(x => x.k === ui.f).fn, q = ui.q.trim().toLowerCase();
   const forced = ui.f !== 'all' || !!ui.sys || !!q;
   const hay = m => `${m.marker.name} ${m.marker.long || ''} ${SYSTEM_LABEL[m.marker.system]} ${m.marker.copy.why || ''}`.toLowerCase();
@@ -1104,10 +1184,14 @@ function printSummary() {
     return `<li><span class="ps-n num"><i class="p-pip bg-${mv.latest.state}"></i></span><span class="ps-b"><b>${esc(mv.marker.name)} <span class="num">${esc(valText(mv, mv.latest))}</span>${unitOf(mv) ? ' <span class="ps-u">' + esc(unitOf(mv)) + '</span>' : ''}</b>
       <small>${esc(SYSTEM_LABEL[mv.marker.system])}${d ? ' · ' + esc(distLine(mv)) : ''}</small></span></li>`;
   }).join('');
+  /* On screen a truncated list is a tap away from the rest. On paper "and 2
+     more" is a dead end, so the cap is as high as the sheet holds and the
+     overflow line says where the remainder actually lives. */
+  const PS_CAP = 8;
   return `<section class="p-sum" aria-hidden="true">
     <div class="wrap"><div class="ps-grid">
       <div><h2>${esc(spell(ATTENTION.length))} outside range</h2><ol class="ps-l">${pr}</ol></div>
-      <div><h2>At target</h2><ol class="ps-l ps-dates">${AT_TARGET.slice(0, 8).map(mv => `<li><span class="ps-n num"><i class="p-pip bg-optimal"></i></span><span class="ps-b"><b>${esc(mv.marker.name)} <span class="num">${esc(valText(mv, mv.latest))}</span></b><small>${esc(SYSTEM_LABEL[mv.marker.system])}</small></span></li>`).join('')}</ol>${AT_TARGET.length > 8 ? `<p class="ps-more num">and ${AT_TARGET.length - 8} more</p>` : ''}</div>
+      <div><h2>At target</h2><ol class="ps-l ps-dates">${AT_TARGET.slice(0, PS_CAP).map(mv => `<li><span class="ps-n num"><i class="p-pip bg-optimal"></i></span><span class="ps-b"><b>${esc(mv.marker.name)} <span class="num">${esc(valText(mv, mv.latest))}</span></b><small>${esc(SYSTEM_LABEL[mv.marker.system])}</small></span></li>`).join('')}</ol>${AT_TARGET.length > PS_CAP ? `<p class="ps-more num">and ${AT_TARGET.length - PS_CAP} more at target — every result is listed in full later in this report.</p>` : ''}</div>
     </div>
     <p class="ps-f">${esc(CLINIC.name)} · ${esc(CLINIC.city)} · ${esc(CLINIC.phone)}<span class="sep"> · </span>Blood drawn ${esc(COLLECTED)}</p></div>
   </section>`;
@@ -1151,6 +1235,23 @@ $('#app').innerHTML = (HERO_Q === 'target' ? targetHero() : HERO_Q === 'rings' ?
 }
 renderLedger();
 
+/* Nine of the ten printed sheets carried nothing saying whose results they
+   are. A loose page 5 cannot be re-filed, and two reports printed the same
+   afternoon are indistinguishable once the stacks touch. First name, age and
+   the draw date are what PatientView already holds and are enough to re-file
+   a sheet without putting a new identifier on paper. Fixed position repeats
+   it on every page in print; it must be a direct child of body, because a
+   transform or filter on any ancestor would demote it to that ancestor and
+   it would print once. */
+{
+  const run = document.createElement('div');
+  run.className = 'ps-run';
+  run.setAttribute('aria-hidden', 'true');
+  run.innerHTML = `<span>${esc(V.patient.firstName)} · age <span class="num">${V.patient.ageAtExam}</span> · ${esc(PRODUCT_NAME)}, blood drawn <span class="num">${esc(COLLECTED)}</span></span>`
+    + `<span>${esc(CLINIC.name)} · ${esc(CLINIC.city)} · ${esc(CLINIC.phone)}</span>`;
+  document.body.appendChild(run);
+}
+
 /* ---------- layout pass: charts at real size, rail annotations ---------- */
 function renderChart(el) {
   const w = Math.round(el.clientWidth), h = Math.round(el.clientHeight);
@@ -1164,12 +1265,24 @@ function renderChart(el) {
    last year, the rest) and yield rather than collide. */
 function layRB(rb) {
   const track = rb.querySelector('.rb-track'), W = track ? track.clientWidth : 0; if (!W) return;
+  /* Every offset below is computed from W and written back as a percentage of
+     it, never as a pixel. The pixels were measured once at the on-screen
+     column width and never recomputed, so on paper - where the column is half
+     as wide - the scale numbers walked out of the bar and printed inside the
+     explanation beside it: "1.05" landing in the middle of "cardiovascular
+     risk", and on Lp(a) the value dot itself leaving the bar entirely. A
+     percentage resolves against the same box layRB measured (.mk against
+     .rb-track, .tk/.tc against .rb-below, .zn against .rb-above - all three
+     are exactly W), so the screen is pixel-identical and any later layout at
+     another width scales instead of breaking. This also covers a reader
+     hitting Cmd-P, where no relayout hook runs at all. */
+  const pc = x => (x / W * 100).toFixed(3) + '%';
   const mk = rb.querySelector('.mk');
-  if (rb.classList.contains('ord')) { const c = rb.querySelector('.rb-steps .cur'); if (c && mk) mk.style.left = (c.offsetLeft + c.offsetWidth / 2).toFixed(1) + 'px'; return; }
+  if (rb.classList.contains('ord')) { const c = rb.querySelector('.rb-steps .cur'); if (c && mk) mk.style.left = pc(c.offsetLeft + c.offsetWidth / 2); return; }
   const fit = (el, padPx) => {
     const zl = (+el.dataset.zl / 100) * W, zr = (+el.dataset.zr / 100) * W, x0 = (+el.dataset.x / 100) * W, m = el.offsetWidth / 2 + padPx;
     const x = zr - zl < 2 * m ? (zl + zr) / 2 : clamp(x0, zl + m, zr - m);
-    el.style.left = x.toFixed(1) + 'px'; return x;
+    el.style.left = pc(x); return x;
   };
   const tv = rb.classList.contains('tv');
   const mx = mk ? fit(mk, tv ? 8 : 6.5) : 0;
@@ -1178,7 +1291,7 @@ function layRB(rb) {
   if (pv) { px = fit(pv, 3); const clash = Math.abs(px - mx) < mk.offsetWidth / 2 + 5; pv.style.visibility = clash ? 'hidden' : ''; if (clash) px = null; }
   const above = rb.querySelector('.rb-above'), occ = { a: [], b: [] };
   const place = (el, row, l, cx) => {
-    el.style.left = l.toFixed(1) + 'px'; el.style.transform = 'none'; el.style.visibility = ''; el.style.setProperty('--mx', (cx - l).toFixed(1) + 'px');
+    el.style.left = pc(l); el.style.transform = 'none'; el.style.visibility = ''; el.style.setProperty('--mx', (cx - l).toFixed(1) + 'px');
     occ[row].push([l, l + el.offsetWidth]);
   };
   /* force: the target tick carries the number the whole card is about, so it
@@ -1211,6 +1324,24 @@ function hydrate(root = document) {
   $$('.rb[data-lay]', root).forEach(layRB);
 }
 function layoutAll() { hydrate(document); railFade(); moveInd($('.srail [aria-current]'), true); }
+/* Every chart is drawn at the pixel size of its own box and cached on it, so a
+   print stylesheet that resizes the box leaves the SVG scaled rather than
+   redrawn - on paper the card charts were landing at roughly 5pt type, legible
+   on a screen at 2x and not on a sheet of A4. Drop the cache and redraw on the
+   way into print, and again on the way out so the screen is not left holding
+   paper dimensions. page.pdf() never fires beforeprint, hence the global. */
+function relayoutCharts() { $$('.lc').forEach(el => { el._w = 0; el._h = 0; }); hydrate(document); }
+/* Plates are lazy, so only the ones that had scrolled into view were decoded:
+   three of the six attention cards printed their organ engraving and three
+   printed an empty square, and none of the eleven ledger group headings had
+   one at all. They are data URIs - there is nothing to fetch - so eager is
+   free at print time. */
+function eagerImages() { $$('img[loading="lazy"]').forEach(i => { i.loading = 'eager'; if (!i.complete && i.src) i.src = i.src; }); }
+function preparePrint() { eagerImages(); relayoutCharts(); }
+addEventListener('beforeprint', preparePrint);
+addEventListener('afterprint', relayoutCharts);
+try { const pmq = matchMedia('print'); if (pmq.addEventListener) pmq.addEventListener('change', preparePrint); } catch (e) { /* older engines */ }
+window.relayoutForPrint = preparePrint;
 hydrate(document);
 if (ro) ro.observe(document.body);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { $$('.rb[data-lay]').forEach(layRB); moveInd($('.srail [aria-current]'), true); });
@@ -1545,6 +1676,22 @@ document.addEventListener('click', e => {
   if (e.target.closest('#room')) return;
   const n = e.target.closest('[data-noop]'); if (n) { e.preventDefault(); toast('Sample: other portal pages are not part of this prototype.'); return; }
   const t = e.target.closest('[data-toast]'); if (t) { toast('Sample. ' + t.dataset.toast); return; }
+  /* Download is the browser's own print-to-PDF. There is no server behind this
+     page, so the print stylesheet IS the document: one A4 sheet of priorities,
+     the cards, what moved, the samples, then all 39 results. Every group is
+     forced open for print, so what saves is the whole report, not what happens
+     to be expanded on screen. Some embedded viewers refuse print(); say so
+     rather than appearing to do nothing. */
+  const pdf = e.target.closest('[data-pdf]');
+  if (pdf) {
+    e.preventDefault();
+    try {
+      if (typeof print !== 'function') throw new Error('no print');
+      toast('Opening your print dialog — choose “Save as PDF”.');
+      setTimeout(() => { try { print(); } catch (x) { toast('This viewer blocks printing. Open the report in a browser tab and print from there.'); } }, 180);
+    } catch (x) { toast('This viewer blocks printing. Open the report in a browser tab and print from there.'); }
+    return;
+  }
   const a = e.target.closest('a[href^="#"]');
   if (a && a.getAttribute('href').length > 1) {
     e.preventDefault();
@@ -1569,7 +1716,54 @@ document.addEventListener('click', e => {
 function syncSearch() { $('#qx').hidden = !ui.q; }
 $('#q').addEventListener('input', e => { ui.q = e.target.value; syncSearch(); renderLedger(); keepLedgerInView(); });
 $('#qx').addEventListener('click', () => { ui.q = ''; $('#q').value = ''; syncSearch(); renderLedger(); $('#q').focus(); });
-$('#sys').addEventListener('change', e => setLedgerSys(e.target.value));
+/* ---------- the system picker ----------
+   A listbox, not a menu: one of the options is always the current state, so
+   arrows move a highlight and Enter commits it. Escape and an outside click
+   both close without changing anything, and focus goes back to the button. */
+const sysPick = $('#sysPick'), sysBtn = $('#sysBtn'), sysPop = $('#sysPop');
+let sysAt = -1;
+const sysOpts = () => $$('.sp-o', sysPop);
+function sysMark(i) {
+  const o = sysOpts(); if (!o.length) return;
+  sysAt = clamp(i, 0, o.length - 1);
+  o.forEach((b, k) => b.classList.toggle('at', k === sysAt));
+  const b = o[sysAt];
+  sysPop.setAttribute('aria-activedescendant', b.id || (b.id = 'sp-o-' + sysAt));
+  const pr = sysPop.getBoundingClientRect(), br = b.getBoundingClientRect();
+  if (br.top < pr.top) sysPop.scrollTop -= pr.top - br.top;
+  else if (br.bottom > pr.bottom) sysPop.scrollTop += br.bottom - pr.bottom;
+}
+function sysOpen(on) {
+  if (!sysPick) return;
+  sysPop.hidden = !on;
+  sysPick.classList.toggle('open', on);
+  sysBtn.setAttribute('aria-expanded', String(on));
+  if (on) { const o = sysOpts(); sysMark(Math.max(0, o.findIndex(b => b.getAttribute('aria-selected') === 'true'))); sysPop.focus(); }
+  else { sysPop.removeAttribute('aria-activedescendant'); }
+}
+if (sysPick) {
+  sysBtn.addEventListener('click', () => sysOpen(sysPop.hidden));
+  sysPop.addEventListener('click', e => { const o = e.target.closest('.sp-o'); if (!o) return; sysOpen(false); sysBtn.focus(); setLedgerSys(o.dataset.sys); });
+  sysPop.addEventListener('keydown', e => {
+    const o = sysOpts();
+    if (e.key === 'Escape') { e.preventDefault(); sysOpen(false); sysBtn.focus(); return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); sysMark(sysAt + 1); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); sysMark(sysAt - 1); return; }
+    if (e.key === 'Home') { e.preventDefault(); sysMark(0); return; }
+    if (e.key === 'End') { e.preventDefault(); sysMark(o.length - 1); return; }
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const b = o[sysAt]; if (b) { sysOpen(false); sysBtn.focus(); setLedgerSys(b.dataset.sys); } return; }
+    // type-ahead: a letter jumps to the next system starting with it
+    if (e.key.length === 1 && /\S/.test(e.key)) {
+      const c = e.key.toLowerCase();
+      const from = sysAt + 1;
+      const i = o.findIndex((b, k) => k >= from && b.textContent.trim().toLowerCase().startsWith(c));
+      const j = i >= 0 ? i : o.findIndex(b => b.textContent.trim().toLowerCase().startsWith(c));
+      if (j >= 0) { e.preventDefault(); sysMark(j); }
+    }
+  });
+  addEventListener('pointerdown', e => { if (!sysPop.hidden && !sysPick.contains(e.target)) sysOpen(false); }, true);
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !sysPop.hidden) { sysOpen(false); sysBtn.focus(); } });
+}
 const syncPh = () => { $('#q').placeholder = MQ.phone.matches ? 'Search' : 'Search biomarkers'; };
 syncPh();
 MQ.phone.addEventListener('change', () => { syncPh(); renderLedger(); tbStuck(); });

@@ -668,6 +668,16 @@ function mountTargetHero() {
     ariaLabel: `Your longevity target: all ${S.total} markers, each in the ring for its state and grouped by body system`,
     onOpen: id => openDrawer(id),
     onSystem: id => focusSystem(focusSys === id ? null : id, 'target'),
+    /* the card's tally shows the year the chart is showing, so scrubbing never
+       leaves the two contradicting each other */
+    onFrame: (by, u) => {
+      const T = $('#thTally'); if (!T) return;
+      const set = (k, v) => { const el = T.querySelector(`[data-k="${k}"]`); if (el && el.textContent !== String(v)) el.textContent = v; };
+      set('optimal', by.optimal); set('in_range', by.in_range);
+      set('attn', by.borderline + by.out_of_range);
+      const y = $('#thYrNow'), n2 = EXAM_DATES.length;
+      if (y) y.textContent = (n2 > 1 && u < n2 - 1.015) ? `Showing ${formatYear(EXAM_DATES[clamp(Math.round(u), 0, n2 - 1)])}` : '';
+    },
   });
   bx = bxHero;                                  // the ledger and sheets drive the same chart
 

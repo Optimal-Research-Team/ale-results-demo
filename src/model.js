@@ -50,17 +50,27 @@ const PREV_EXAM = FIRST_EXAM ? LAST_EXAM : EXAM_DATES[EXAM_DATES.length - 2];
 
 function buildMarker(d, order) {
   const bands = toBands(d), ordinal = !!d.steps;
-  const points = EXAM_DATES.map((examDate, i) => {
-    const raw = d.v[i]; if (raw == null) return null;
+  const reading = (examDate, raw, kind) => {
+    if (raw == null) return null;
     const value = ordinal ? d.steps.indexOf(raw) : raw;
-    return { examDate, value, valueText: ordinal ? raw : null, comparator: null, state: ordinal ? d.stepStates[value] : stateFor(bands, value) };
-  }).filter(Boolean);
+    return { examDate, kind, value, valueText: ordinal ? raw : null, comparator: null, state: ordinal ? d.stepStates[value] : stateFor(bands, value) };
+  };
+  /* Not every result arrives on the annual cadence. A low vitamin D gets
+     rechecked in the spring; a thyroid dose change is followed up in six
+     weeks. Those readings are real history and belong on the marker's line,
+     but they are not an assessment: the ring chart, the year scrubber and the
+     year-over-year tally all stay keyed to EXAM_DATES, and an interim reading
+     is simply a point between two of them. */
+  const points = [
+    ...EXAM_DATES.map((examDate, i) => reading(examDate, d.v[i], 'exam')),
+    ...(d.x || []).map(([date, raw]) => reading(date, raw, 'interim')),
+  ].filter(Boolean).sort((a, b) => (a.examDate < b.examDate ? -1 : a.examDate > b.examDate ? 1 : 0));
   const latest = points[points.length - 1];
   // one lab hiccup and a marker has no value in any exam; it is dropped rather
   // than taking the whole page down on latest.examDate
   if (!latest) return null;
   const carriedForward = latest.examDate !== LAST_EXAM;
-  const previous = carriedForward || FIRST_EXAM ? null : (points.find(p => p.examDate === PREV_EXAM) || null);
+  const previous = carriedForward || FIRST_EXAM ? null : (points.find(p => p.examDate === PREV_EXAM && p.kind === 'exam') || null);
   const mv = {
     marker: { id: d.id, name: d.name, long: d.long, system: d.system, order, precision: d.precision || 0, unit: d.unit,
       direction: 'in_range', copy: { why: d.why, about: d.about }, oncePerLifetime: !!d.once, valueType: ordinal ? 'ordinal' : 'quantity' },
@@ -85,7 +95,7 @@ const SUMMARY = (() => {
   const byState = emptyCounts(), prev = emptyCounts(); let prevTotal = 0;
   MARKERS.forEach(m => {
     byState[m.latest.state]++;
-    const pp = [...m.points].reverse().find(p => p.examDate <= PREV_EXAM);
+    const pp = [...m.points].reverse().find(p => p.kind === 'exam' && p.examDate <= PREV_EXAM);
     if (pp) { prev[pp.state]++; prevTotal++; }
   });
   return { total: MARKERS.length, byState, healthy: byState.optimal + byState.in_range,
@@ -101,7 +111,7 @@ const SYSTEMS = SYSTEM_ORDER.map(s => {
 /** PatientView (lib/ale/types.ts) — everything the dashboard, TV deck and PDF render. */
 const VIEW = {
   productName: PRODUCT_NAME,
-  report: { id: 'sample-report', examDate: LAST_EXAM, collectedAt: '2026-09-12T08:10:00-04:00', labName: 'Dynacare', publishedAt: '2026-09-24T16:30:00-04:00', amended: false, status: 'published' },
+  report: { id: 'sample-report', examDate: LAST_EXAM, collectedAt: '2026-09-12T08:10:00-04:00', labName: 'LifeLabs', publishedAt: '2026-09-24T16:30:00-04:00', amended: false, status: 'published' },
   patient: { firstName: 'Daniel', sex: 'M', ageAtExam: 44 },
 
   version: VERSION, markers: MARKERS, systems: SYSTEMS, summary: SUMMARY, examDates: EXAM_DATES,

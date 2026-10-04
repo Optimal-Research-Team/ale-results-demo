@@ -82,6 +82,9 @@ const DEFS = [
     about: 'Ferritin reflects the iron stored in your body. Low ferritin can cause fatigue before anemia appears; high ferritin can reflect inflammation, so it is read with hs-CRP.' },
 
   { id: 'vitd', system: 'nutrients', name: 'Vitamin D', long: '25-hydroxy vitamin D', unit: 'nmol/L', precision: 0, r: [25, X, 75, B, 100, O, 250, X, 275], v: [62, 81, 88],
+    // rechecked in the spring after the 2024 result came back below the range,
+    // and again on a winter dose: readings that belong to no assessment
+    x: [['2025-03-11', 74], ['2026-02-24', 83]],
     why: 'Supports bone, muscle, immune function and mood.',
     about: 'Vitamin D is made in the skin from sunlight and absorbed from food and supplements. It supports bone density, muscle and immunity. In Canada most people run low from October to April.' },
   { id: 'b12', system: 'nutrients', name: 'Vitamin B12', unit: 'pg/mL', precision: 0, r: [100, X, 220, B, 400, O, 700, N, 900], v: [390, 455, 512],

@@ -1,3 +1,7 @@
 .DS_Store
 src/preview.html
 src/out.html
+
+src/.orig/
+src/assets/*.glb
+src/assets/*.obj
