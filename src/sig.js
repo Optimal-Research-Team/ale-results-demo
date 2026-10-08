@@ -686,6 +686,20 @@ function mountTargetHero() {
     },
   });
   if (!HERO_ISO) bx = bxHero;                   // the ledger and sheets drive the same chart
+  /* The plate is shorter than the square chart, so on a tall phone the card
+     follows it instead of waiting at the foot of the screen. Where the
+     caption really ends is measured, not guessed: --th-cap-b feeds the CSS. */
+  if (HERO_ISO) {
+    const cap = $('.s-thero .th-cap'), frame = $('.s-thero .scan-frame');
+    const place = () => {
+      if (!cap || !frame) return;
+      const b2 = cap.getBoundingClientRect().bottom - frame.getBoundingClientRect().top;
+      if (b2 > 0) frame.style.setProperty('--th-cap-b', `${Math.round(b2)}px`);
+    };
+    place();
+    if (typeof ResizeObserver === 'function') new ResizeObserver(place).observe(el);
+    addEventListener('resize', place, { passive: true });
+  }
   const tiltBtn = $('#thTilt');
   if (tiltBtn && bxHero.setTilt) tiltBtn.addEventListener('click', () => {
     const flat = tiltBtn.getAttribute('aria-pressed') !== 'true';

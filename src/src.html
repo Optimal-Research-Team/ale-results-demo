@@ -641,6 +641,16 @@ html.tv .s-thero h1{font-size:44px}
 .s-thero .sc-next:hover{border-bottom-color:var(--forest)}
 .s-thero .sc-next .sc-nk{color:var(--forest)}
 .s-thero .sc-next .sep{color:var(--ink-muted)}
+/* The hand-off ("furthest from target") was written for the dark photo heroes
+   and inherited their cream type through .s-scan: on the cream field the
+   marker's name, value and links were cream on cream - invisible on every
+   viewport. They are ink here. */
+.s-thero .sc-cB h2{color:var(--ink-strong)}
+.s-thero .sc-cB h2 em{color:var(--forest-deep)}
+.s-thero .sc-val .v{color:var(--ink-strong)}
+.s-thero .sc-val .u{color:var(--ink-muted)}
+.s-thero .sc-val .sc-d{color:var(--ink-soft)}
+.s-thero .sc-blinks,.s-thero .sc-blinks a,.s-thero .sc-blinks button{color:var(--forest)}
 
 /* the hero's copy, as a card: the three words needed mass, and the tally that
    lived only in the chart's centre belongs beside them */
@@ -689,9 +699,14 @@ html.tv .s-thero h1{font-size:44px}
 }
 /* ?hero=iso - the target as a terrace. Wider than it is tall, so it gets the
    figure's full width and its own height instead of the square frame */
-.s-thero.th-iso .th-chart{width:min(100%,calc(118 * var(--svh)));aspect-ratio:auto}
-/* a short figure: the scrubber belongs right under it, not at the foot of the frame */
-.s-thero.th-iso .th-fig{grid-template-rows:auto auto;align-content:center;row-gap:calc(3 * var(--svh))}
+/* Sized from the height left under the nav (the plate is about two thirds as
+   tall as it is wide), centred in that space rather than the whole frame, and
+   brought in to the card's edge: the square chart needed the margin, the
+   wider plate does not. */
+.s-thero.th-iso .th-chart{width:min(100%,calc((100 * var(--svh) - var(--chrome-h) - 92px) * 1.5));aspect-ratio:auto}
+.s-thero.th-iso .th-fig{grid-template-rows:auto auto;align-content:center;row-gap:calc(2.2 * var(--svh))}
+@media (min-width:641px){.s-thero.th-iso .th-fig{inset:var(--chrome-h) 1.5% 0 34%}}
+@media (min-width:1200px){.s-thero.th-iso .th-fig{left:31%}}
 .s-thero.th-iso .th-cap{padding-bottom:0}
 .th-tilt{display:none}
 .s-thero .th-tilt{display:inline-flex;align-items:center;flex:none;font:500 12.5px/1 var(--sans);letter-spacing:.01em;
@@ -704,7 +719,15 @@ html.tv .s-thero h1{font-size:44px}
 @media (max-width:640px){
   .s-thero.th-iso .th-chart{width:100%}
   /* a tall phone has room to spare under the shorter plate: share it above */
-  @media (min-height:740px){.s-thero.th-iso .th-fig{top:calc(var(--chrome-h) + 4 * var(--svh))}}
+  .s-thero.th-iso .th-fig{align-content:start}
+  @media (min-height:740px){
+    .s-thero.th-iso .th-fig{top:calc(var(--chrome-h) + 1 * var(--svh))}
+    .s-thero.th-iso .sc-cA,.s-thero.th-iso .sc-cB{top:calc(var(--th-cap-b,58%) + 20px);bottom:auto}
+    /* nothing sits over the plate now, so the cream scrim that kept a card
+       legible over it would only hide the forest under the card */
+    .s-thero.th-iso .scan-copy::before{display:none}
+    .s-thero.th-iso .th-hatch{height:34%;opacity:.95}
+  }
   .s-thero .th-tilt{padding:6px 11px;font-size:12px}
 }
 
@@ -1568,18 +1591,26 @@ html.motion .mv.in .lp{transform:none;opacity:1;transition:transform .45s cubic-
 .btn:active,.capsule button:active,.mv:active{transform:scale(.98)}
 
 /* ---------- closing band: Maya's last line on the canopy, one action ---------- */
-.s-close{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;min-height:clamp(460px,calc(70 * var(--svh)),640px);background:var(--forest-night);color:var(--cream)}
+.s-close{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;min-height:clamp(340px,calc(46 * var(--svh)),460px);background:var(--forest-night);color:var(--cream)}
 /* the canopy carries a baked-in wordmark at its centre: frame the lower-right leaves instead */
 .close-photo{position:absolute;inset:0;z-index:-2;background-size:cover;background-position:right bottom;transform:scale(1.9);transform-origin:100% 100%}
 /* the engraved shore replaces the photograph: the section stays dark, the
    stock image goes. Pale sage ink anchored to the bottom, full width. */
-.close-shore{position:absolute;inset:auto 0 0 0;z-index:-2;height:78%;
-  background:no-repeat bottom center;background-size:100% auto;opacity:.5;
-  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 34%);mask-image:linear-gradient(180deg,transparent 0,#000 34%)}
+.close-shore{position:absolute;inset:auto 0 0 0;z-index:-2;height:86%;
+  background:no-repeat bottom center;background-size:100% auto;opacity:.92;filter:brightness(1.55) saturate(.85);
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 30%);mask-image:linear-gradient(180deg,transparent 0,#000 30%)}
+/* on a wide screen the words sit over the left of the shore: the engraving
+   keeps its full ink to the right and steps back behind the type */
+@media (min-width:641px){.close-shore{
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 30%),linear-gradient(90deg,rgba(0,0,0,.16) 0,rgba(0,0,0,.16) 34%,#000 64%);
+  -webkit-mask-composite:source-in;
+  mask-image:linear-gradient(180deg,transparent 0,#000 30%),linear-gradient(90deg,rgba(0,0,0,.16) 0,rgba(0,0,0,.16) 34%,#000 64%);
+  mask-composite:intersect}}
+.s-close .eyebrow{color:#A4C29D}
 @media print{.close-shore{display:block!important;position:absolute!important;inset:auto 0 0 0!important;
   height:54mm!important;opacity:.95;filter:none;background-size:cover!important;background-position:center bottom!important}}
-.s-close::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(28,49,24,.78) 0%,rgba(28,49,24,.5) 50%,rgba(28,49,24,.3) 100%),linear-gradient(180deg,rgba(28,49,24,.35),rgba(28,49,24,0) 30%,rgba(28,49,24,0) 60%,rgba(28,49,24,.55))}
-.s-close .wrap{width:100%;padding-block:clamp(72px,calc(10 * var(--vw)),128px)}
+.s-close::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(28,49,24,.7) 0%,rgba(28,49,24,.34) 46%,rgba(28,49,24,0) 72%)}
+.s-close .wrap{width:100%;padding-block:clamp(52px,calc(6 * var(--vw)),88px)}
 .close-f{margin:0}
 .close-q{margin:0;max-width:12em;font:400 clamp(34px,calc(4.1 * var(--vw)),58px)/1.06 var(--serif);letter-spacing:-.03em;color:var(--cream);text-wrap:balance}
 .close-q em{letter-spacing:-.02em;color:#C9DBC4}
@@ -2184,7 +2215,7 @@ html.motion .slide.in .lp,html.motion .slide.in .gap{opacity:1;transition:opacit
   .s-plan{padding:48px 0 40px}
   .s-sign{padding:28px 0 48px}
   .s-close{min-height:0}
-  .s-close .wrap{padding-block:64px 56px}
+  .s-close .wrap{padding-block:48px 120px}
   .close-q{font-size:32px;line-height:1.1}
   .close-q::before{margin-left:0}
   .pill-cta{margin-top:28px;height:50px}

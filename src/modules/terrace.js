@@ -46,6 +46,11 @@ function renderTerrace(el, opts) {
      states are the only colour on the plate */
   const DOT = { optimal: '#2C4E25', in_range: '#A9A49B', borderline: '#C97B2D', out_of_range: '#B3402F' };
   const FG = { optimal: '#1A500F', in_range: '#76736D', borderline: '#9A5A1C', out_of_range: '#B3402F' };
+  /* pins are small spheres: each state's colour, lit from the upper left */
+  const mix = (hex, to, k) => '#' + [1, 3, 5].map(i => Math.round(parseInt(hex.substr(i, 2), 16) * (1 - k) + to * k).toString(16).padStart(2, '0')).join('');
+  const SPHERE = {};
+  ORDER.forEach(st => { SPHERE[st] = { hi: mix(DOT[st], 255, st === 'optimal' ? .5 : .55), mid: DOT[st], lo: mix(DOT[st], 0, st === 'in_range' ? .3 : .38) }; });
+  SPHERE.hollow = { hi: '#FFFFFF', mid: '#F7F5F0', lo: '#D9D4CA' };
   const PAL = WOOD ? {
     top: { optimal: '#ECEAD6', in_range: '#F5EEDF', borderline: '#F5EBD8', out_of_range: '#F4E6DA' },
     wall: { optimal: '#CDBE9C', in_range: '#D7C5A4', borderline: '#D9C4A0', out_of_range: '#D8C09E' },
@@ -285,7 +290,9 @@ function renderTerrace(el, opts) {
         + `<text x="${f1(cx)}" y="${f1(yc + nFs * .2 + subFs * 1.75)}" text-anchor="middle" font-size="${f1(subFs)}" font-weight="600" letter-spacing=".12em" fill="#2C4E25">AT TARGET</text></g>`);
     }
     front.sort(byDepth).forEach(it => out.push(pin(it, C)));
-    svg.innerHTML = out.join('');
+    const grad = Object.keys(SPHERE).map(k => `<radialGradient id="${uid}-sp-${k}" cx=".42" cy=".4" r=".66" fx=".33" fy=".3">`
+      + `<stop offset="0" stop-color="${SPHERE[k].hi}"/><stop offset=".48" stop-color="${SPHERE[k].mid}"/><stop offset="1" stop-color="${SPHERE[k].lo}"/></radialGradient>`).join('');
+    svg.innerHTML = `<defs>${grad}</defs>` + out.join('');
     sync();
   }
 
@@ -299,8 +306,10 @@ function renderTerrace(el, opts) {
       + `<line x1="0" y1="0" x2="0" y2="${f1(-h + r * .7)}" stroke="#4A4842" stroke-width="1.1" stroke-linecap="round"/>`;
     if (m.once) g += `<circle cx="0" cy="${f1(-h)}" r="${f1(r + 3.6)}" fill="none" stroke="${DOT[st]}" stroke-opacity=".75" stroke-width="1" stroke-dasharray="2 2.2"/>`;
     g += hollow
-      ? `<circle cx="0" cy="${f1(-h)}" r="${f1(r - .5)}" fill="#FFFFFF" stroke="#8A857D" stroke-width="1.3"/>`
-      : `<circle cx="0" cy="${f1(-h)}" r="${f1(r)}" fill="${DOT[st]}" stroke="#FFFFFF" stroke-width="1.6"/>`;
+      ? `<circle cx="0" cy="${f1(-h)}" r="${f1(r - .3)}" fill="url(#${uid}-sp-hollow)" stroke="#8A857D" stroke-width="1.3"/>`
+      : `<circle cx="0" cy="${f1(-h)}" r="${f1(r)}" fill="url(#${uid}-sp-${st})" stroke="${SPHERE[st].lo}" stroke-width=".6"/>`;
+    /* a pin of light: what makes a disc read as a ball at this size */
+    g += `<ellipse cx="${f1(-r * .34)}" cy="${f1(-h - r * .4)}" rx="${f1(r * .26)}" ry="${f1(r * .19)}" fill="#FFFFFF" opacity="${hollow ? .9 : .5}" transform="rotate(-30 ${f1(-r * .34)} ${f1(-h - r * .4)})"/>`;
     g += `<circle class="tr-hl" cx="0" cy="${f1(-h)}" r="${f1(r + 4)}" fill="none" stroke="#252525" stroke-width="1.25"/>`;
     return g + '</g>';
   }
