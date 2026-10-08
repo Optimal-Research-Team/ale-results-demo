@@ -586,12 +586,13 @@ function targetHero() {
   // the hero's second beat is the result furthest from target, taken from the
   // data rather than from anything the clinic has to write
   const mv1 = ATTENTION[0], dp1 = mv1 ? distParts(mv1) : null;
-  return `<section id="scan" class="s-scan s-thero" aria-labelledby="thH">
+  return `<section id="scan" class="s-scan s-thero${HERO_Q === 'iso' ? ' th-iso' : ''}" aria-labelledby="thH">
   <div class="scan-track"><div class="scan-frame">
     <canvas class="th-hatch" id="thHatch" aria-hidden="true"></canvas>
     <figure class="th-fig">
       <div class="th-chart" id="bxHero"></div>
-      <figcaption class="th-cap">${scrubUI()}
+      <figcaption class="th-cap">${scrubUI()}${HERO_Q === 'iso' ? `
+        <button type="button" class="th-tilt" id="thTilt" aria-pressed="false"><span class="tl-a">View flat</span><span class="tl-b">View terrace</span></button>` : ''}
         <span class="th-hint"><span class="tp">Tap</span><span class="hv">Select</span> a dot for its history</span></figcaption>
     </figure>
     <div class="scan-copy" data-state="A">
@@ -755,7 +756,9 @@ const HERO_Q = new URLSearchParams(location.search).get('hero') || 'target';
    the hero there is no separate #target section, and the hero is the chart -
    so that entry would be a link to nothing and "Body" would name a body map
    this page no longer has. */
-const RAIL = (HERO_Q === 'target'
+const RAIL = (HERO_Q === 'iso'
+  ? [['scan', 'Terrace'], ['attention', 'Attention'], ['target', 'Target'], ['progress', 'Progress'], ['samples', 'Samples'], ['results', 'Results']]
+  : HERO_Q === 'target'
   ? [['scan', 'Target'], ['attention', 'Attention'], ['progress', 'Progress'], ['samples', 'Samples'], ['results', 'Results']]
   : [['scan', 'Body'], ['attention', 'Attention'], ['target', 'Target'], ['progress', 'Progress'], ['samples', 'Samples'], ['results', 'Results']]);
 const chap = (n, t) => `<p class="chap"><span class="chap-n">${n}</span><span class="chap-t">${esc(t)}</span></p>`;
@@ -1219,7 +1222,7 @@ function signoff() {
 
 /* One story order on every viewport: the scan hands off to the priorities, the
    plan answers "what do I do", and Part two is the patient's own exploring. */
-$('#app').innerHTML = (HERO_Q === 'target' ? targetHero() : HERO_Q === 'rings' ? ringsHero() : scanHero()) + printSummary() + srail() + attentionSection()
+$('#app').innerHTML = (HERO_Q === 'target' || HERO_Q === 'iso' ? targetHero() : HERO_Q === 'rings' ? ringsHero() : scanHero()) + printSummary() + srail() + attentionSection()
   + (HERO_Q === 'target' ? '' : target()) + moved() + samples() + ledgerShell() + closing() + signoff();
 
 /* The rail is filled from the sections that actually rendered. Deriving it from

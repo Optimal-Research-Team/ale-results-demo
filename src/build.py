@@ -14,7 +14,7 @@ def uri(name, mime):
     return f"data:{mime};base64," + base64.b64encode((here / name).read_bytes()).decode()
 def js(name):
     return (here / name).read_text()
-MODULES = ['modules/bullseye.js', 'modules/vials3d.js', 'modules/scan3d.js']
+MODULES = ['modules/bullseye.js', 'modules/terrace.js', 'modules/vials3d.js', 'modules/scan3d.js']
 def lattice():
     # The Living Scan's voxel figure: X Bot by Adobe Mixamo (royalty-free),
     # re-posed to an A-pose and voxelised by tools/bake-lattice.mjs. Inlined as

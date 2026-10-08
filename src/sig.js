@@ -373,6 +373,8 @@ const HERO = new URLSearchParams(location.search).get('hero') || 'target';
 const HERO_BAY = HERO === 'bay';
 const HERO_LINE = HERO === 'engraving';
 if (HERO) docEl.classList.add('hero-' + HERO);
+/* the terrace hero sits on the same cream field as the target hero */
+if (HERO === 'iso') docEl.classList.add('hero-target');
 const zoomK = () => { const z = parseFloat(getComputedStyle(docEl).getPropertyValue('--z')); return docEl.classList.contains('tv') && z > 0 ? z : 1; };
 
 /* The camera solves its framing from what the copy actually measures, so the
@@ -655,7 +657,10 @@ function paintWood(cv, size) {
 /* ?hero=rings - scrolling travels outward through the years. Each ring lights
    as its year arrives, its markers fade in, and the last ring is today. */
 const HERO_RINGS = HERO === 'rings';
-const HERO_TARGET = HERO === 'target';
+/* ?hero=iso - the same hero with the target tilted into a terrace (terrace.js);
+   the flat chart stays further down the page as the place to read it */
+const HERO_ISO = HERO === 'iso';
+const HERO_TARGET = HERO === 'target' || HERO_ISO;
 /* The hero bullseye. Scroll turns the year: the dots travel from where they
    sat last exam to where they sit now, their states flip at the midpoint, and
    the centre count counts with them. */
@@ -663,8 +668,9 @@ let bxHero = null;
 function mountTargetHero() {
   const el = $('#bxHero'); if (!el) return;
   mountHatch();
-  bxHero = renderBullseye(el, {
+  bxHero = (HERO_ISO ? renderTerrace : renderBullseye)(el, {
     markers: BX_MARKERS, systems: BX_SYS, reducedMotion: !MOTION, entrance: 'trend', autoplay: false, dock: 'never',
+    material: new URLSearchParams(location.search).get('mat') === 'wood' ? 'wood' : 'stone',
     ariaLabel: `Your longevity target: all ${S.total} markers, each in the ring for its state and grouped by body system`,
     onOpen: id => openDrawer(id),
     onSystem: id => focusSystem(focusSys === id ? null : id, 'target'),
@@ -679,7 +685,13 @@ function mountTargetHero() {
       if (y) y.textContent = (n2 > 1 && u < n2 - 1.015) ? `Showing ${formatYear(EXAM_DATES[clamp(Math.round(u), 0, n2 - 1)])}` : '';
     },
   });
-  bx = bxHero;                                  // the ledger and sheets drive the same chart
+  if (!HERO_ISO) bx = bxHero;                   // the ledger and sheets drive the same chart
+  const tiltBtn = $('#thTilt');
+  if (tiltBtn && bxHero.setTilt) tiltBtn.addEventListener('click', () => {
+    const flat = tiltBtn.getAttribute('aria-pressed') !== 'true';
+    tiltBtn.setAttribute('aria-pressed', String(flat));
+    bxHero.setTilt(flat ? 0 : 1, true);
+  });
 
   /* The chart's position in time has one source of truth: the scrubber's value.
      Scrolling writes to it, dragging writes to it, and only it moves the dots.

@@ -361,7 +361,7 @@ canvas.sc-poster{transition:opacity .3s linear}
   .ps-f{margin:8mm 0 0;padding-top:2.5mm;border-top:1px solid #DDDCDB;font-size:8.5pt;color:#666}
   .scan-track{height:auto!important}
   .scan-frame{position:static!important;height:auto!important;background:#fff!important;overflow:visible!important}
-  .scan-stage,.sample-stage,.rg-wrap,.sample-legend,.sc-cB,.th-yr,.th-scrub,.th-hint,.th-hatch{display:none!important}
+  .scan-stage,.sample-stage,.rg-wrap,.sample-legend,.sc-cB,.th-yr,.th-scrub,.th-hint,.th-hatch,.th-tilt{display:none!important}
   .s-thero .th-fig{position:static!important;display:block!important;inset:auto!important;margin:4mm auto 0!important}
   /* 11 system names ride a ring outside the plate, and at 112mm the ring has
      too little circumference for the long ones - "Urinalysis" and
@@ -686,6 +686,26 @@ html.tv .s-thero h1{font-size:44px}
   .s-thero .sc-cA{transform:translateY(calc(var(--b) * -14px))}
   .s-thero .sc-cB{transform:translateY(calc((1 - var(--b)) * 18px))}
   .s-thero h1{font-size:30px}
+}
+/* ?hero=iso - the target as a terrace. Wider than it is tall, so it gets the
+   figure's full width and its own height instead of the square frame */
+.s-thero.th-iso .th-chart{width:min(100%,calc(118 * var(--svh)));aspect-ratio:auto}
+/* a short figure: the scrubber belongs right under it, not at the foot of the frame */
+.s-thero.th-iso .th-fig{grid-template-rows:auto auto;align-content:center;row-gap:calc(3 * var(--svh))}
+.s-thero.th-iso .th-cap{padding-bottom:0}
+.th-tilt{display:none}
+.s-thero .th-tilt{display:inline-flex;align-items:center;flex:none;font:500 12.5px/1 var(--sans);letter-spacing:.01em;
+  color:var(--ink-strong);background:rgba(255,252,247,.86);border:1px solid var(--bone-3);border-radius:999px;
+  padding:7px 13px;cursor:pointer;transition:border-color .2s var(--ease),color .2s var(--ease)}
+.s-thero .th-tilt:hover{border-color:var(--forest);color:var(--forest)}
+.s-thero .th-tilt:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.th-tilt .tl-b,.th-tilt[aria-pressed="true"] .tl-a{display:none}
+.th-tilt[aria-pressed="true"] .tl-b{display:inline}
+@media (max-width:640px){
+  .s-thero.th-iso .th-chart{width:100%}
+  /* a tall phone has room to spare under the shorter plate: share it above */
+  @media (min-height:740px){.s-thero.th-iso .th-fig{top:calc(var(--chrome-h) + 4 * var(--svh))}}
+  .s-thero .th-tilt{padding:6px 11px;font-size:12px}
 }
 
 /* ==========================================================================
