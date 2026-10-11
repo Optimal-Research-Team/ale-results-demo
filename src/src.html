@@ -697,7 +697,17 @@ html.tv .s-thero h1{font-size:44px}
   .s-thero .sc-cB{transform:translateY(calc((1 - var(--b)) * 18px))}
   .s-thero h1{font-size:30px}
 }
-.climb-w{margin:14px 0 6px}
+.climb-w{margin:12px 0 0}
+.cl-draw{stroke-dasharray:1;stroke-dashoffset:0}
+html.motion .prio[data-open="true"] .cl-draw{animation:clDraw .9s cubic-bezier(.3,.7,.2,1) .25s both}
+@keyframes clDraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){html.motion .prio[data-open="true"] .cl-draw{animation:none}}
+/* the six to work on: a card's engraving turns a little toward you on hover */
+@media (hover:hover){
+  .prio-head .plate-wrap{transition:transform .7s cubic-bezier(.2,.8,.2,1)}
+  .prio-head:hover .plate-wrap,.prio-head:focus-visible .plate-wrap{transform:rotate(-6deg) scale(1.06)}
+}
+@media (prefers-reduced-motion:reduce){.prio-head .plate-wrap{transition:none}.prio-head:hover .plate-wrap{transform:none}}
 .climb-w svg{display:block;max-width:100%;height:auto;overflow:visible;font-family:var(--sans)}
 .climb-bar{display:none}
 @media (max-width:640px){.climb-w{display:none}.climb-bar{display:block}}
@@ -721,7 +731,10 @@ html.tv .s-thero h1{font-size:44px}
 .s-thero .th-tilt:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .th-tilt .tl-b,.th-tilt[aria-pressed="true"] .tl-a{display:none}
 .th-tilt[aria-pressed="true"] .tl-b{display:inline}
+/* the TV is read from across the room; a phone needs a thumb-sized target */
+html.tv .s-thero .th-tilt{font-size:15px;padding:9px 17px}
 @media (max-width:640px){
+  .s-thero .th-tilt{min-height:44px;padding:0 15px;font-size:13px}
   .s-thero.th-iso .th-chart{width:100%}
   /* a tall phone has room to spare under the shorter plate: share it above */
   .s-thero.th-iso .th-fig{align-content:start}
@@ -733,7 +746,6 @@ html.tv .s-thero h1{font-size:44px}
     .s-thero.th-iso .scan-copy::before{display:none}
     .s-thero.th-iso .th-hatch{height:34%;opacity:.95}
   }
-  .s-thero .th-tilt{padding:6px 11px;font-size:12px}
 }
 
 /* ==========================================================================

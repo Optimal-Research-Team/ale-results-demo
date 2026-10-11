@@ -109,7 +109,7 @@ function climbSpec(mv) {
   if (bl[i - dir]) path.unshift(i - dir);
   const x = bl[i], w = x.hi - x.lo;
   return { id: mv.marker.id, name: mv.marker.name, value: valText(mv, mv.latest), unit: unitOf(mv),
-    steps: path.map(k => ({ state: bl[k].state })), cur: path.indexOf(i),
+    steps: path.map(k => ({ state: bl[k].state, range: bandPhrase(mv, bl[k]) })), cur: path.indexOf(i),
     frac: w > 0 ? (dir > 0 ? (v - x.lo) / w : (x.hi - v) / w) : .5,
     goalWord: isTarget(goalOf(mv)) ? 'target' : 'lab range' };
 }

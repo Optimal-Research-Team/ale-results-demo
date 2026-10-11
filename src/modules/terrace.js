@@ -295,6 +295,13 @@ function renderTerrace(el, opts) {
       const fl = arcPts(C, 1, x.b0, x.b1, 0, [0, 0, 0]).concat(arcPts(C, FR[1], x.b1, x.b0, 0, [0, 0, 0]));
       out.push(`<path d="${pathOf(fl)}" fill="#2C4E25" opacity="${f1(.1 * x.o[2])}"/>`);
     });
+    /* a lifted slice's shadow: its footprint straight below it, on the plinth */
+    SEC.forEach(x => {
+      if (x.o[2] < .02 || !isoOn) return;
+      const up = (wide ? 20 : 12) * x.o[2] * C.k, so = [x.o[0], x.o[1] + up, 0];
+      const fp = arcPts(C, 1, x.b0, x.b1, 0, so).concat(arcPts(C, FR[1], x.b1, x.b0, 0, so));
+      out.push(`<path d="${pathOf(fp)}" fill="#252525" opacity="${f1(.13 * x.o[2])}"/>`);
+    });
     /* pins go with their slice: back-half pins sit with their own terrace (the
        next, higher one is drawn over them), front-half pins on top of the slice */
     const back = SYS.map(() => ORDER.map(() => [])), front = SYS.map(() => []);
@@ -347,7 +354,24 @@ function renderTerrace(el, opts) {
       }
     });
     if (!coreDone) core();
-    /* the lifted system names itself; no other label is drawn on the plate */
+    /* every system's name at rest, quiet: above the rim behind, below the plinth
+       in front, on the outer ring at the sides (where the rim meets the frame).
+       Desktop and TV only: a phone names a system when it is tapped. */
+    if (wide && C.k > .82) {
+      const anyOpen = SEC.some(x => x.i >= 0 && x.o[2] > .02);
+      SEC.forEach(x => {
+        if (x.i < 0) return;
+        const A = rad(x.mid + C.rot), cA = Math.cos(A);
+        let p, dy;
+        if (cA > .5) { p = Po(C, 1, x.mid, Z('out_of_range'), x.o); dy = -10; }
+        else if (cA < -.5) { p = Po(C, 1.035, x.mid, -BASE, x.o); dy = 15; }
+        else { p = Po(C, .935, x.mid, Z('out_of_range'), x.o); dy = 4; }
+        const op = x.o[2] > .02 ? 0 : anyOpen ? .3 : .68 * clamp((C.k - .82) / .16, 0, 1);
+        if (op < .01) return;
+        out.push(`<text class="tr-rest" x="${f1(p[0])}" y="${f1(p[1] + dy)}" text-anchor="middle" font-size="11" font-weight="500" fill="#76736D" opacity="${f1(op)}" paint-order="stroke" stroke="#FFFCF7" stroke-width="3" stroke-linejoin="round" aria-hidden="true">${H(SYS[x.i].label)}</text>`);
+      });
+    }
+    /* the lifted system names itself in full, with its counts */
     SEC.forEach(x => {
       if (x.i < 0 || x.o[2] < .02) return;
       const sy = SYS[x.i], by = { optimal: 0, in_range: 0, borderline: 0, out_of_range: 0 };
@@ -493,6 +517,7 @@ function renderTerrace(el, opts) {
     }
     if (i >= 0 && opts.onOpen) opts.onOpen(DOTS[i].m.id);
   });
+  on(document, 'pointerdown', e => { if (openSys >= 0 && !svg.contains(e.target)) openTo(-1); }, { passive: true });
   const firstAttention = () => { const i = DOTS.findIndex(d => attn(d.m.state)); return i < 0 ? 0 : i; };
   /* only keyboard focus picks a dot: a tap also focuses the chart, and must
      not lift a system before its own click decides what the tap meant */

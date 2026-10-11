@@ -49,6 +49,7 @@ function renderClimb(spec) {
   steps.forEach((s, i) => {
     const xe = P((i + 1) * sw, dd, 0)[0] - 8, ye = P(i * sw + sw * .75, dd, 0)[1] + 15;
     out.push(`<text x="${f1(xe)}" y="${f1(ye)}" text-anchor="end" font-size="8.5" font-weight="600" letter-spacing=".08em" fill="${INK[s.state]}">${H(WORD[s.state].toUpperCase())}</text>`);
+    if (s.range) out.push(`<text x="${f1(xe)}" y="${f1(ye + 12)}" text-anchor="end" font-size="9.5" font-family="var(--mono, ui-monospace, Menlo, monospace)" fill="#76736D">${H(s.range)}</text>`);
   });
 
   /* the walk: from the result along its tread, up each riser, to the goal */
@@ -58,7 +59,13 @@ function renderClimb(spec) {
   for (let k = cur + 1; k < n; k++) { walk.push(P(k * sw, yMid, k * hh)); walk.push(P(k * sw, yMid, (k + 1) * hh)); }
   const goal = P((n - 1) * sw + sw * .5, yMid, n * hh);
   walk.push(goal);
-  if (cur < n - 1) out.push(`<path d="M${walk.map(p => `${f1(p[0])} ${f1(p[1])}`).join('L')}" fill="none" stroke="${DOT[steps[cur].state]}" stroke-width="1.4" stroke-dasharray="2 3" stroke-linecap="round" stroke-linejoin="round"/>`);
+  /* the walk is dashed, so it draws in through a mask: a solid copy of the same
+     path, revealed along its length when the card opens */
+  if (cur < n - 1) {
+    const d = `M${walk.map(p => `${f1(p[0])} ${f1(p[1])}`).join('L')}`;
+    out.push(`<mask id="${uid}-m" maskUnits="userSpaceOnUse"><path class="cl-draw" d="${d}" pathLength="1" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></mask>`
+      + `<path d="${d}" mask="url(#${uid}-m)" fill="none" stroke="${DOT[steps[cur].state]}" stroke-width="1.4" stroke-dasharray="2 3" stroke-linecap="round" stroke-linejoin="round"/>`);
+  }
   out.push(`<ellipse cx="${f1(goal[0])}" cy="${f1(goal[1])}" rx="11" ry="6.3" fill="none" stroke="#2C4E25" stroke-width="1.3" stroke-dasharray="2 2"/>`);
   out.push(`<text x="${f1(goal[0] + 16)}" y="${f1(goal[1] - 8)}" font-size="12" font-style="italic" font-weight="500" fill="#1A500F">${H(spec.goalWord)}</text>`);
 
@@ -72,7 +79,7 @@ function renderClimb(spec) {
 
   const togo = n - 1 - cur;
   const aria = `${spec.name}: ${spec.value}${spec.unit ? ' ' + spec.unit : ''}, ${WORD[st].toLowerCase()}, ${togo === 0 ? 'at its goal' : `${togo} step${togo === 1 ? '' : 's'} below the ${spec.goalWord}`}`;
-  const VW = Math.ceil(P(n * sw, 0, 0)[0] + 96), VH = Math.ceil(ground + 26);
+  const VW = Math.ceil(P(n * sw, 0, 0)[0] + 96), VH = Math.ceil(ground + 30);
   return `<svg class="climb-svg" viewBox="0 0 ${VW} ${VH}" width="${VW}" height="${VH}" role="img" aria-label="${H(aria)}">`
     + `<defs><radialGradient id="${uid}-g" cx=".42" cy=".4" r=".66" fx=".33" fy=".3"><stop offset="0" stop-color="${mix(DOT[st], 255, .52)}"/><stop offset=".48" stop-color="${DOT[st]}"/><stop offset="1" stop-color="${mix(DOT[st], 0, .34)}"/></radialGradient></defs>`
     + out.join('') + '</svg>';

@@ -775,7 +775,7 @@ function mountTargetHero() {
     const p = span > 8 ? clamp(-t.top / span, 0, 1) : (t.top < 0 ? 1 : 0);
     // the first three fifths turn the year; the rest hands off to the copy
     const yr = clamp(p / 0.6, 0, 1);
-    if (!held) setFrom(NX > 1 ? (NX - 2) + yr : 0);
+    if (!held && !HERO_ISO) setFrom(NX > 1 ? (NX - 2) + yr : 0);
     const b = clamp((p - 0.66) / 0.2, 0, 1);
     scanCopy.style.setProperty('--b', (b * b * (3 - 2 * b)).toFixed(3));
     scanCopy.dataset.state = b > 0.5 ? 'B' : 'A';
@@ -785,6 +785,23 @@ function mountTargetHero() {
   };
   addEventListener('scroll', () => { if (!r2) r2 = requestAnimationFrame(onScroll); }, { passive: true });
   addEventListener('resize', () => { if (!r2) r2 = requestAnimationFrame(onScroll); });
+  /* The terrace page lands on today. The first view walks last year's
+     results into this year's while the plate rises, then stays on today;
+     the scrubber is there to walk back. Scroll only hands off to the copy. */
+  if (HERO_ISO && NX > 1) {
+    if (!MOTION) setFrom(NX - 1);
+    else {
+      setFrom(NX - 2);
+      const t0 = performance.now() + 700, dur = 1700;
+      const walk = now => {
+        if (held) return;
+        const k = clamp((now - t0) / dur, 0, 1), e2 = k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+        setFrom(NX - 2 + e2);
+        if (k < 1) requestAnimationFrame(walk);
+      };
+      requestAnimationFrame(walk);
+    }
+  }
   addEventListener('beforeprint', () => { setFrom(NX - 1); });
   addEventListener('afterprint', onScroll);
   if (matchMedia) { const mq = matchMedia('print');
