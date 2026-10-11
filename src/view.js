@@ -91,6 +91,28 @@ function targetText(mv) {
   if (g.open || g.hi >= b) return `above ${fmtT(g.lo, p)}`;
   return `${fmtT(g.lo, p)}–${fmtT(g.hi, p)}`;
 }
+/* The climb (terrace page only): a marker's own bands as steps, from one step
+   worse than where it is up to its goal. Not for a result measured once, an
+   ordinal one, or one already at its goal - there is nothing to climb. */
+function climbSpec(mv) {
+  if (isOrd(mv) || frozen(mv) || mv.latest.value == null) return null;
+  const bl = bandList(mv.bands), v = mv.latest.value;
+  if (bl.length < 2) return null;
+  let i = bl.findIndex(x => inBand(x, v)); if (i < 0) i = v < bl[0].lo ? 0 : bl.length - 1;
+  const RANK = { optimal: 3, in_range: 2, borderline: 1, out_of_range: 0 };
+  const best = Math.max(...bl.map(x => RANK[x.state]));
+  let j = -1, gap = Infinity;
+  bl.forEach((x, k) => { if (RANK[x.state] === best && Math.abs(k - i) < gap) { gap = Math.abs(k - i); j = k; } });
+  if (j < 0 || j === i) return null;
+  const dir = j > i ? 1 : -1, path = [];
+  for (let k = i; k !== j + dir; k += dir) path.push(k);
+  if (bl[i - dir]) path.unshift(i - dir);
+  const x = bl[i], w = x.hi - x.lo;
+  return { id: mv.marker.id, name: mv.marker.name, value: valText(mv, mv.latest), unit: unitOf(mv),
+    steps: path.map(k => ({ state: bl[k].state })), cur: path.indexOf(i),
+    frac: w > 0 ? (dir > 0 ? (v - x.lo) / w : (x.hi - v) / w) : .5,
+    goalWord: isTarget(goalOf(mv)) ? 'target' : 'lab range' };
+}
 /** Plain arithmetic on the bands already shown: how far the value sits from the target. */
 function distParts(mv) {
   const g = goalOf(mv); if (!g) return null;
@@ -593,7 +615,7 @@ function targetHero() {
       <div class="th-chart" id="bxHero"></div>
       <figcaption class="th-cap">${scrubUI()}${HERO_Q === 'iso' ? `
         <button type="button" class="th-tilt" id="thTilt" aria-pressed="false"><span class="tl-a">View flat</span><span class="tl-b">View terrace</span></button>` : ''}
-        <span class="th-hint"><span class="tp">Tap</span><span class="hv">Select</span> a dot for its history</span></figcaption>
+        ${HERO_Q === 'iso' ? '<span class="th-hint"><span class="hv">Hover a system to lift it</span><span class="tp">Tap a system to lift it</span></span>' : '<span class="th-hint"><span class="tp">Tap</span><span class="hv">Select</span> a dot for its history</span>'}</figcaption>
     </figure>
     <div class="scan-copy" data-state="A">
       <div class="sc-cA">
@@ -757,7 +779,7 @@ const HERO_Q = new URLSearchParams(location.search).get('hero') || 'target';
    so that entry would be a link to nothing and "Body" would name a body map
    this page no longer has. */
 const RAIL = (HERO_Q === 'iso'
-  ? [['scan', 'Terrace'], ['attention', 'Attention'], ['target', 'Target'], ['progress', 'Progress'], ['samples', 'Samples'], ['results', 'Results']]
+  ? [['scan', 'Target'], ['attention', 'Attention'], ['progress', 'Progress'], ['samples', 'Samples'], ['results', 'Results']]
   : HERO_Q === 'target'
   ? [['scan', 'Target'], ['attention', 'Attention'], ['progress', 'Progress'], ['samples', 'Samples'], ['results', 'Results']]
   : [['scan', 'Body'], ['attention', 'Attention'], ['target', 'Target'], ['progress', 'Progress'], ['samples', 'Samples'], ['results', 'Results']]);
@@ -878,7 +900,8 @@ function attentionSection() {
       <div class="clip"><div class="clip-in" id="pb${i}"${open ? '' : ' inert'}><div class="prio-grid">
         <div class="inst"><div class="kicker">Where you are</div>
           <div class="bigval"><span class="v num">${esc(valText(mv, mv.latest))}</span><span class="u">${esc(unitOf(mv))}</span>${stateTag(mv.latest.state)}</div>
-          ${rangeBar(mv, { ticks: true, target: true, prev: true, glide: true })}
+          ${(() => { const bar = rangeBar(mv, { ticks: true, target: true, prev: true, glide: true }), cs = HERO_Q === 'iso' ? climbSpec(mv) : null;
+            return cs ? `<div class="climb-w">${renderClimb(cs)}</div><div class="climb-bar">${bar}</div>` : bar; })()}
           <p class="sr">${esc(railSentence(mv, true))}</p>
           ${!isOrd(mv) && mv.points.length > 1 ? `<div class="lc lc-prio" data-chart="${esc(mv.marker.id)}" data-variant="card"></div>` : ''}
           <p class="hist num">${hist}${dp ? `<span class="hd s-${mv.latest.state}">${esc(distLine(mv))}</span>` : ''}</p>
@@ -1109,6 +1132,17 @@ function rowHTML(m) {
       <span class="st">${rowTag(m.latest.state)}</span>
       <span class="go" aria-hidden="true">${ICON.arrow}</span>${sr ? `<span class="sr">${esc(sr)}</span>` : ''}</button>`;
 }
+/* The terrace page's group headers carry the system's slice of the plate in
+   place of the tick strip: the same marks, standing where they sit. The slice
+   keeps its full shape; a filter only hides pins, as it hides ticks. */
+function sliceGlyph(sy, shown) {
+  const ids = new Set(shown.map(m => m.marker.id));
+  const ms = sy.markerIds.map(id => MARKERS.find(m => m.marker.id === id)).filter(Boolean);
+  return renderSliceGlyph({ id: sy.system, markers: ms.map(mv => {
+    const ord = isOrd(mv), L = mv.latest, hasT = !ord && bandList(mv.bands).some(x => x.state === 'optimal'), hol = L.state === 'in_range' && !hasT;
+    return { state: L.state, closeness: hol ? .5 : bullseyeCloseness(mv.bands, L.value, ord), hollow: hol, shown: ids.has(mv.marker.id) };
+  }) });
+}
 function renderLedger() {
   const phone = MQ.phone.matches;
   $('#tabs').innerHTML = FILTERS.map(f => `<button type="button" data-f="${f.k}" aria-pressed="${ui.f === f.k}"><span class="tb-l">${esc(f.l)}</span><span class="tb-s">${esc(f.s)}</span><span class="c num">${MARKERS.filter(f.fn).length}</span></button>`).join('');
@@ -1155,7 +1189,7 @@ function renderLedger() {
     } else {
       // the system's engraving rides its heading: eleven plates were drawn and
       // only the three priority ones were regularly seen
-      h += `<div class="grp">${plateImg(s.system, 'plate-grp')}<h3>${esc(s.label)}</h3><span class="g-meta">${miniSpec(g)}<span class="g-c num">${cnt}</span></span></div>${g.map(rowHTML).join('')}`;
+      h += `<div class="grp">${plateImg(s.system, 'plate-grp')}<h3>${esc(s.label)}</h3><span class="g-meta">${HERO_Q === 'iso' ? sliceGlyph(s, g) : miniSpec(g)}<span class="g-c num">${cnt}</span></span></div>${g.map(rowHTML).join('')}`;
     }
   }
   $('#rows').innerHTML = h || `<p class="empty">No results match. Clear the search or pick another filter.</p>`;
@@ -1223,7 +1257,7 @@ function signoff() {
 /* One story order on every viewport: the scan hands off to the priorities, the
    plan answers "what do I do", and Part two is the patient's own exploring. */
 $('#app').innerHTML = (HERO_Q === 'target' || HERO_Q === 'iso' ? targetHero() : HERO_Q === 'rings' ? ringsHero() : scanHero()) + printSummary() + srail() + attentionSection()
-  + (HERO_Q === 'target' ? '' : target()) + moved() + samples() + ledgerShell() + closing() + signoff();
+  + (HERO_Q === 'target' || HERO_Q === 'iso' ? '' : target()) + moved() + samples() + ledgerShell() + closing() + signoff();
 
 /* The rail is filled from the sections that actually rendered. Deriving it from
    a list is how "Target" survived the section it pointed at, and how a patient

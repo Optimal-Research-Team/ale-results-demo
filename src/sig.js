@@ -685,7 +685,7 @@ function mountTargetHero() {
       if (y) y.textContent = (n2 > 1 && u < n2 - 1.015) ? `Showing ${formatYear(EXAM_DATES[clamp(Math.round(u), 0, n2 - 1)])}` : '';
     },
   });
-  if (!HERO_ISO) bx = bxHero;                   // the ledger and sheets drive the same chart
+  bx = bxHero;                                  // the ledger and sheets drive the same chart
   /* The plate is shorter than the square chart, so on a tall phone the card
      follows it instead of waiting at the foot of the screen. Where the
      caption really ends is measured, not guessed: --th-cap-b feeds the CSS. */
