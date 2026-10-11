@@ -779,7 +779,9 @@ function mountTargetHero() {
     const b = clamp((p - 0.66) / 0.2, 0, 1);
     scanCopy.style.setProperty('--b', (b * b * (3 - 2 * b)).toFixed(3));
     scanCopy.dataset.state = b > 0.5 ? 'B' : 'A';
-    const on = t.bottom > 8 && t.top < innerHeight - 8;
+    // the nav sits clear on the hero only while the hero holds still: once it
+    // scrolls away its copy would pass under the nav's words, so the frost returns
+    const on = t.bottom > 8 && t.top < innerHeight - 8 && (span > 8 ? -t.top < span - 2 : t.top > -4);
     // the target hero is cream, so the browser chrome never darkens for it
     if (on !== scanOn) { scanOn = on; docEl.classList.toggle('on-scan', on); }
   };

@@ -1404,6 +1404,8 @@ function fire(el) {
 }
 function flushArrivals() { if (!scrollIdle) return; pending.forEach(el => { pending.delete(el); fire(el); }); }
 function arrive(el) { if (scrollIdle) fire(el); else pending.add(el); }
+// the climb turns toward you under a mouse (terrace page only)
+if (MOTION && HERO_Q === 'iso') wireClimbs();
 if (MOTION) {
   // a section counts as arrived at 70% visible, or as soon as a tall one fills the screen
   const io = new IntersectionObserver(es => es.forEach(e => {

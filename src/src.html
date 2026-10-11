@@ -147,7 +147,7 @@ html.tv .s-prios .lede{display:none}
 /* the target's lede gives its room to the chart */
 html.tv .tg-copy .lede{display:none}
 html.tv #room{zoom:calc(1 / var(--z))}
-.chrome{position:sticky;top:0;z-index:30;background:rgba(255,252,247,.92);backdrop-filter:saturate(1.2) blur(12px);-webkit-backdrop-filter:saturate(1.2) blur(12px);border-bottom:1px solid var(--hair);transition:transform .32s var(--ease)}
+.chrome{position:sticky;top:0;z-index:30;background:rgba(255,252,247,.92);backdrop-filter:saturate(1.2) blur(12px);-webkit-backdrop-filter:saturate(1.2) blur(12px);border-bottom:1px solid var(--hair);transition:transform .32s var(--ease),background-color .3s var(--ease),border-color .3s var(--ease)}
 @media (min-width:901px){html.nav-away .chrome{transform:translateY(-100%)}}
 .chrome .wrap{display:flex;align-items:center;gap:28px;height:64px}
 .wm{height:22px;width:auto;aspect-ratio:1748/534}
@@ -702,12 +702,13 @@ html.tv .s-thero h1{font-size:44px}
 html.motion .prio[data-open="true"] .cl-draw{animation:clDraw .9s cubic-bezier(.3,.7,.2,1) .25s both}
 @keyframes clDraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
 @media (prefers-reduced-motion:reduce){html.motion .prio[data-open="true"] .cl-draw{animation:none}}
-/* the six to work on: a card's engraving turns a little toward you on hover */
-@media (hover:hover){
-  .prio-head .plate-wrap{transition:transform .7s cubic-bezier(.2,.8,.2,1)}
-  .prio-head:hover .plate-wrap,.prio-head:focus-visible .plate-wrap{transform:rotate(-6deg) scale(1.06)}
-}
-@media (prefers-reduced-motion:reduce){.prio-head .plate-wrap{transition:none}.prio-head:hover .plate-wrap{transform:none}}
+/* the climb under a mouse: the stair turns (climb.js), its walk runs toward
+   the goal and the target ring's dashes march */
+html.motion .climb-w.cl-on .cl-walk{animation:clWalk .7s linear infinite}
+html.motion .climb-w.cl-on .cl-ring{animation:clRing 1.1s linear infinite}
+@keyframes clWalk{to{stroke-dashoffset:-5}}
+@keyframes clRing{to{stroke-dashoffset:-8}}
+@media (prefers-reduced-motion:reduce){html.motion .climb-w.cl-on .cl-walk,html.motion .climb-w.cl-on .cl-ring{animation:none}}
 .climb-w svg{display:block;max-width:100%;height:auto;overflow:visible;font-family:var(--sans)}
 .climb-bar{display:none}
 @media (max-width:640px){.climb-w{display:none}.climb-bar{display:block}}
