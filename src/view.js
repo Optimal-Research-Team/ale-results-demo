@@ -1132,17 +1132,6 @@ function rowHTML(m) {
       <span class="st">${rowTag(m.latest.state)}</span>
       <span class="go" aria-hidden="true">${ICON.arrow}</span>${sr ? `<span class="sr">${esc(sr)}</span>` : ''}</button>`;
 }
-/* The terrace page's group headers carry the system's slice of the plate in
-   place of the tick strip: the same marks, standing where they sit. The slice
-   keeps its full shape; a filter only hides pins, as it hides ticks. */
-function sliceGlyph(sy, shown) {
-  const ids = new Set(shown.map(m => m.marker.id));
-  const ms = sy.markerIds.map(id => MARKERS.find(m => m.marker.id === id)).filter(Boolean);
-  return renderSliceGlyph({ id: sy.system, markers: ms.map(mv => {
-    const ord = isOrd(mv), L = mv.latest, hasT = !ord && bandList(mv.bands).some(x => x.state === 'optimal'), hol = L.state === 'in_range' && !hasT;
-    return { state: L.state, closeness: hol ? .5 : bullseyeCloseness(mv.bands, L.value, ord), hollow: hol, shown: ids.has(mv.marker.id) };
-  }) });
-}
 function renderLedger() {
   const phone = MQ.phone.matches;
   $('#tabs').innerHTML = FILTERS.map(f => `<button type="button" data-f="${f.k}" aria-pressed="${ui.f === f.k}"><span class="tb-l">${esc(f.l)}</span><span class="tb-s">${esc(f.s)}</span><span class="c num">${MARKERS.filter(f.fn).length}</span></button>`).join('');
@@ -1189,7 +1178,7 @@ function renderLedger() {
     } else {
       // the system's engraving rides its heading: eleven plates were drawn and
       // only the three priority ones were regularly seen
-      h += `<div class="grp">${plateImg(s.system, 'plate-grp')}<h3>${esc(s.label)}</h3><span class="g-meta">${HERO_Q === 'iso' ? sliceGlyph(s, g) : miniSpec(g)}<span class="g-c num">${cnt}</span></span></div>${g.map(rowHTML).join('')}`;
+      h += `<div class="grp">${plateImg(s.system, 'plate-grp')}<h3>${esc(s.label)}</h3><span class="g-meta">${miniSpec(g)}<span class="g-c num">${cnt}</span></span></div>${g.map(rowHTML).join('')}`;
     }
   }
   $('#rows').innerHTML = h || `<p class="empty">No results match. Clear the search or pick another filter.</p>`;
