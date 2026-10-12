@@ -1,4 +1,8 @@
 const EXAM_DATES = ['2024-09-19', '2025-09-18', '2026-09-24'];
+/* VO2max, entered by an NP in the review tool: score, machine and test date. Absent
+   (null) for anyone who hasn't done the test, and then the section never renders.
+   Synthetic, like everything here. */
+const VO2 = { modality: 'cycle', unit: 'ml/kg/min', tests: [{ date: '2025-09-18', value: 38.9 }, { date: '2026-09-24', value: 42.6 }] };
 const O = 'optimal', N = 'in_range', B = 'borderline', X = 'out_of_range';
 const DIP = ['Negative', 'Trace', '1+', '2+', '3+'], DIP_STATES = [O, B, X, X, X];
 

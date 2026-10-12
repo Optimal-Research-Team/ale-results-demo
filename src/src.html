@@ -977,6 +977,29 @@ section{scroll-margin-top:64px}
 .s-note{padding:calc(var(--sec) * .8) 0 var(--sec);--rail:340px}
 .s-prios{padding:var(--sec) 0}
 .s-moved{padding:var(--sec) 0;position:relative;overflow:hidden;isolation:isolate}
+/* Fitness · VO2max: the rider on the left, the score and the columns on the right */
+.s-fit{padding:var(--sec) 0}
+.fit-grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(24px,calc(4 * var(--vw)),64px);align-items:start;margin-top:clamp(20px,calc(3 * var(--vw)),40px)}
+.fit-bike{position:relative;max-width:380px;justify-self:center;width:100%}
+.fit-bike::before{content:"";position:absolute;inset:8% 4% 2%;border-radius:50%;background:radial-gradient(closest-side,rgba(135,164,130,.18),rgba(135,164,130,0));z-index:-1}
+.fit-bike optimal-vo2-bike{display:block}
+.fit-main{display:flex;flex-direction:column;gap:10px;min-width:0}
+.fit-num{display:flex;align-items:baseline;gap:10px}
+.fit-num .v{font:400 clamp(64px,calc(7 * var(--vw)),96px)/.9 var(--serif);letter-spacing:-.03em;color:var(--forest-deep)}
+.fit-num .u{font-size:15px;color:var(--ink-muted)}
+.fit-sub{margin:0;font-size:15px;color:var(--ink-soft)}
+.fit-sub .sep{color:var(--ink-muted)}
+.fit-iso{margin-top:10px}
+.fit-iso [data-v="c"]{display:none}
+.fit-iso svg{display:block;max-width:560px;height:auto;overflow:visible;font-family:var(--sans)}
+.fit-cap{margin:4px 0 0;font-size:13px;line-height:1.55;color:var(--ink-muted);max-width:60ch}
+@media (max-width:760px){
+  .fit-grid{grid-template-columns:1fr;gap:8px}
+  .fit-bike{max-width:230px}
+  .fit-iso [data-v="w"]{display:none}
+  .fit-iso [data-v="c"]{display:block}
+}
+@media print{.s-fit{break-inside:avoid}.fit-bike{max-width:200px}}
 /* Progress carries a tree round: in this section the rings are years, which is
    exactly what it reports. Held at a whisper and bled off the right edge so it
    is a watermark, never a second chart. */

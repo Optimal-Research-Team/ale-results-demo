@@ -115,6 +115,7 @@ const VIEW = {
   patient: { firstName: 'Daniel', sex: 'M', ageAtExam: 44 },
 
   version: VERSION, markers: MARKERS, systems: SYSTEMS, summary: SUMMARY, examDates: EXAM_DATES,
+  fitness: typeof VO2 !== 'undefined' && VO2 && VO2.tests && VO2.tests.length ? VO2 : null,
   catalog: { version: 'sample', approved: false },
 };
 

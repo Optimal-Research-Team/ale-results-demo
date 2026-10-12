@@ -779,10 +779,10 @@ const HERO_Q = new URLSearchParams(location.search).get('hero') || 'target';
    so that entry would be a link to nothing and "Body" would name a body map
    this page no longer has. */
 const RAIL = (HERO_Q === 'iso'
-  ? [['scan', 'Target'], ['attention', 'Attention'], ['progress', 'Progress'], ['samples', 'Samples'], ['results', 'Results']]
+  ? [['scan', 'Target'], ['attention', 'Attention'], ['progress', 'Progress'], ['fitness', 'Fitness'], ['samples', 'Samples'], ['results', 'Results']]
   : HERO_Q === 'target'
-  ? [['scan', 'Target'], ['attention', 'Attention'], ['progress', 'Progress'], ['samples', 'Samples'], ['results', 'Results']]
-  : [['scan', 'Body'], ['attention', 'Attention'], ['target', 'Target'], ['progress', 'Progress'], ['samples', 'Samples'], ['results', 'Results']]);
+  ? [['scan', 'Target'], ['attention', 'Attention'], ['progress', 'Progress'], ['fitness', 'Fitness'], ['samples', 'Samples'], ['results', 'Results']]
+  : [['scan', 'Body'], ['attention', 'Attention'], ['target', 'Target'], ['progress', 'Progress'], ['fitness', 'Fitness'], ['samples', 'Samples'], ['results', 'Results']]);
 const chap = (n, t) => `<p class="chap"><span class="chap-n">${n}</span><span class="chap-t">${esc(t)}</span></p>`;
 function srail() {
   return `<nav class="srail" aria-label="Sections"><div class="srail-bar">
@@ -944,6 +944,48 @@ function moved() {
       <p class="mv-key" aria-hidden="true"><span><i class="k-band"></i>Target band</span>${winsUseLab ? '<span><i class="k-band lab"></i>Lab range</span>' : ''}</p></div></div>
     <div class="charts">${items}</div>
     <button type="button" class="textlink mv-all" data-see="up"><span>See all <span class="num">${S.improved}</span> that improved</span>${ICON.arrow}</button>
+  </div></section>`;
+}
+
+/* Fitness · VO2max. Only when an NP has entered a test: the score, the machine and
+   the date. The comparison uses published medians for the same machine and nothing
+   else (bike results run 13-22 % below treadmill results). Only the verified anchors
+   are used: the medians at 20-29 and 70-79 from the FRIEND registry. Between them
+   the registry's table isn't verified, so nothing is drawn there and no percentile
+   is given. Another machine gets the score alone. */
+const VO2_NORMS = {
+  cycle: { word: 'bike', src: 'the FRIEND registry of maximal bike tests (Kaminsky et al., 2017)', M: [['20s', 25, 41.9], ['70s', 75, 19.5]], F: [['20s', 25, 31.0], ['70s', 75, 14.8]] },
+  treadmill: { word: 'treadmill', src: 'the FRIEND registry of maximal treadmill tests (Kaminsky et al., 2015)', M: [['20s', 25, 48.0], ['70s', 75, 24.4]], F: [['20s', 25, 37.6], ['70s', 75, 18.3]] },
+};
+const FIT = (() => {
+  const F = V.fitness; if (!F) return null;
+  const tests = F.tests.filter(t => t && isFinite(t.value)).slice().sort((a, b) => a.date.localeCompare(b.date)); if (!tests.length) return null;
+  const last = tests[tests.length - 1], prev = tests.length > 1 ? tests[tests.length - 2] : null;
+  const N = VO2_NORMS[F.modality] || null, sex = V.patient.sex === 'F' ? 'F' : 'M', who = sex === 'F' ? 'Women' : 'Men', age = V.patient.ageAtExam;
+  const cols = N ? N[sex].map(([dec, a, v]) => ({ age: a, value: v, label: `${who} in their ${dec}`, sub: 'median', kind: 'median' })) : [];
+  cols.push({ age: age || 45, value: last.value, label: age ? `You, ${age}` : 'You', sub: formatYear(last.date), kind: 'you' });
+  const hi = N && N[sex][0], lo = N && N[sex][1];
+  const place = !N ? '' : last.value >= hi[2] ? `At or above the median for ${who.toLowerCase()} in their ${hi[0]} (${hi[2].toFixed(1)}).`
+    : last.value >= lo[2] ? `Between the medians for ${who.toLowerCase()} in their ${hi[0]} (${hi[2].toFixed(1)}) and their ${lo[0]} (${lo[2].toFixed(1)}).`
+    : `Below the median for ${who.toLowerCase()} in their ${lo[0]} (${lo[2].toFixed(1)}).`;
+  return { F, last, prev, N, cols, place, word: N ? N.word : 'exercise', aria: `VO2max ${last.value.toFixed(1)} ${F.unit}${N ? `, beside the published ${N.word} medians for ${who.toLowerCase()} in their ${hi[0]} (${hi[2]}) and ${lo[0]} (${lo[2]})` : ''}.` };
+})();
+function fitness() {
+  if (!FIT) return '';
+  const { F, last, prev, N } = FIT;
+  const spec = g => ({ cols: FIT.cols, prev: prev ? { value: prev.value, label: `${formatYear(prev.date)}: ${prev.value.toFixed(1)}` } : null, aria: FIT.aria, grow: g });
+  return `<section id="fitness" class="s-fit"><div class="wrap">
+    <div class="head split"><div><p class="eyebrow">Fitness · VO₂max</p><h2 class="d2">How much oxygen <em>you can use</em></h2></div>
+      <div class="split-r"><p class="lede">VO₂max is the most oxygen your heart and muscles can deliver and use at full effort. Yours was measured on a ${esc(FIT.word)} ramp test on <span class="num">${esc(formatLongDate(last.date))}</span>.</p></div></div>
+    <div class="fit-grid">
+      <div class="fit-bike" aria-hidden="true">${F.modality === 'cycle' ? '<optimal-vo2-bike theme="light"></optimal-vo2-bike>' : ''}</div>
+      <div class="fit-main">
+        <div class="fit-num"><span class="v num">${esc(last.value.toFixed(1))}</span><span class="u">${esc(F.unit)}</span></div>
+        <p class="fit-sub">${prev ? `<span class="num">${esc(prev.value.toFixed(1))} → ${esc(last.value.toFixed(1))}</span> since ${esc(formatYear(prev.date))}` : 'Your first test'}${FIT.place ? `<span class="sep"> · </span>${esc(FIT.place)}` : ''}</p>
+        <div class="fit-iso"><div data-v="w">${renderVo2Iso({ ...spec(1) })}</div><div data-v="c">${renderVo2Iso({ ...spec(1), compact: true })}</div></div>
+        <p class="fit-cap">${N ? `The grey columns are medians from ${esc(N.src)}, drawn to the same scale as yours.${F.modality === 'cycle' ? ' Bike results run lower than treadmill results, so yours is compared with bike tests.' : ''}` : 'There is no published median for this kind of test, so your result isn’t compared.'}</p>
+      </div>
+    </div>
   </div></section>`;
 }
 
@@ -1246,7 +1288,7 @@ function signoff() {
 /* One story order on every viewport: the scan hands off to the priorities, the
    plan answers "what do I do", and Part two is the patient's own exploring. */
 $('#app').innerHTML = (HERO_Q === 'target' || HERO_Q === 'iso' ? targetHero() : HERO_Q === 'rings' ? ringsHero() : scanHero()) + printSummary() + srail() + attentionSection()
-  + (HERO_Q === 'target' || HERO_Q === 'iso' ? '' : target()) + moved() + samples() + ledgerShell() + closing() + signoff();
+  + (HERO_Q === 'target' || HERO_Q === 'iso' ? '' : target()) + moved() + fitness() + samples() + ledgerShell() + closing() + signoff();
 
 /* The rail is filled from the sections that actually rendered. Deriving it from
    a list is how "Target" survived the section it pointed at, and how a patient
@@ -1260,6 +1302,19 @@ $('#app').innerHTML = (HERO_Q === 'target' || HERO_Q === 'iso' ? targetHero() : 
   }
 }
 renderLedger();
+/* Fitness: the columns rise once, when the section comes into view */
+if (FIT) {
+  const box = document.getElementById('fitness');
+  const spec = { cols: FIT.cols, prev: FIT.prev ? { value: FIT.prev.value, label: `${formatYear(FIT.prev.date)}: ${FIT.prev.value.toFixed(1)}` } : null, aria: FIT.aria };
+  const draw = g => box.querySelectorAll('.fit-iso [data-v]').forEach(el => { el.innerHTML = renderVo2Iso({ ...spec, compact: el.dataset.v === 'c', grow: g }); });
+  if (MOTION && box) {
+    draw(0);
+    const io = new IntersectionObserver(es => { if (!es.some(e => e.isIntersecting)) return; io.disconnect();
+      const t0 = performance.now(), step = now => { const k = Math.min(1, (now - t0) / 1100), e = 1 - Math.pow(1 - k, 3); draw(e); if (k < 1) requestAnimationFrame(step); };
+      requestAnimationFrame(step); }, { threshold: .35 });
+    io.observe(box);
+  }
+}
 
 /* Nine of the ten printed sheets carried nothing saying whose results they
    are. A loose page 5 cannot be re-filed, and two reports printed the same

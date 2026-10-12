@@ -13,8 +13,10 @@ here = pathlib.Path(__file__).parent
 def uri(name, mime):
     return f"data:{mime};base64," + base64.b64encode((here / name).read_bytes()).decode()
 def js(name):
-    return (here / name).read_text()
-MODULES = ['modules/bullseye.js', 'modules/terrace.js', 'modules/climb.js', 'modules/vials3d.js', 'modules/scan3d.js']
+    # a literal "</script" inside inlined code (the figure kit carries one in a page
+    # template) would close the page's script tag; "<\/script" reads the same to JS
+    return (here / name).read_text().replace('</script', '<\\/script')
+MODULES = ['modules/bullseye.js', 'modules/terrace.js', 'modules/climb.js', 'modules/vo2iso.js', 'modules/vo2bike.js', 'modules/vials3d.js', 'modules/scan3d.js']
 def lattice():
     # The Living Scan's voxel figure: X Bot by Adobe Mixamo (royalty-free),
     # re-posed to an A-pose and voxelised by tools/bake-lattice.mjs. Inlined as
