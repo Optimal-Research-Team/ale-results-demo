@@ -971,12 +971,14 @@ const FIT = (() => {
     : v1 >= lo[2] ? { lead: 'Between', rest: `the medians for ${w} in their ${hi[0]} and ${lo[0]}`, vals: [hi[2], lo[2]] }
     : { lead: 'Below', rest: `the median for ${w} in their ${lo[0]}`, vals: [lo[2]] };
   const d = prev ? Math.round((last.value - prev.value) * 10) / 10 : null;
-  return { F, last, prev, N, cols, cmp, d, word: N ? N.word : 'exercise', aria: `VO2max ${last.value.toFixed(1)} ${F.unit}${N ? `, beside the published ${N.word} medians for ${w} in their ${hi[0]} (${hi[2]}) and ${lo[0]} (${lo[2]})` : ''}.` };
+  const aria = `VO2max ${last.value.toFixed(1)} ${F.unit}${N ? `, beside the published ${N.word} medians for ${w} in their ${hi[0]} (${hi[2]}) and ${lo[0]} (${lo[2]})` : ''}.`;
+  /* the chart's input, built once for the first render, the rise and print */
+  const spec = age ? { cols, aria, prev: prev ? { value: prev.value, label: `${formatYear(prev.date)}: ${prev.value.toFixed(1)}` } : null } : null;
+  return { F, last, prev, N, cmp, d, spec, word: N ? N.word : 'exercise' };
 })();
 function fitness() {
   if (!FIT) return '';
-  const { F, last, prev, N, cmp, d } = FIT;
-  const spec = g => ({ cols: FIT.cols, prev: prev ? { value: prev.value, label: `${formatYear(prev.date)}: ${prev.value.toFixed(1)}` } : null, aria: FIT.aria, grow: g });
+  const { F, last, prev, N, cmp, d, spec } = FIT;
   const shortDate = new Date(last.date + 'T12:00:00').toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
   const test = `${FIT.word[0].toUpperCase()}${FIT.word.slice(1)} ramp test · ${shortDate}`;
   return `<section id="fitness" class="s-fit"><div class="wrap">
@@ -986,14 +988,14 @@ function fitness() {
       ${F.modality === 'cycle' ? `<figure class="fit-bike"><div class="fit-medal" aria-hidden="true"><optimal-vo2-bike theme="light"></optimal-vo2-bike></div><figcaption>${esc(test)}</figcaption></figure>` : ''}
       <div class="fit-read">
         <p class="fit-k">Your VO₂max${F.modality === 'cycle' ? '' : ` · ${esc(test)}`}</p>
-        <div class="fit-num"><span class="v num" data-to="${esc(last.value.toFixed(1))}">${esc(last.value.toFixed(1))}</span><span class="u">${esc(F.unit)}</span></div>
+        <div class="fit-num"><span class="v num" data-to="${esc(last.value.toFixed(1))}" aria-hidden="true">${esc(last.value.toFixed(1))}</span><span class="sr">${esc(last.value.toFixed(1))}</span><span class="u">${esc(F.unit)}</span></div>
         <p class="fit-mv">${prev ? `<span class="fit-d">${d > 0 ? '↑' : d < 0 ? '↓' : ''}<b class="num">${d === 0 ? 'No change' : (d > 0 ? '+' : '−') + Math.abs(d).toFixed(1)}</b></span><span>since ${esc(formatYear(prev.date))} <span class="num">(${esc(prev.value.toFixed(1))})</span></span>` : '<span>Your first test</span>'}</p>
       </div>
         ${cmp ? `<div class="fit-cmp"><p class="fit-ck">Compared with ${esc(FIT.word)} tests</p><p class="fit-cs"><b>${esc(cmp.lead)}</b> ${esc(cmp.rest)}${cmp.vals.map(v => ` <span class="fit-mv-v num">${esc(v.toFixed(1))}</span>`).join(cmp.vals.length > 1 ? ' and' : '')}</p></div>` : '<p class="fit-cs">No published median for this kind of test, so it isn\u2019t compared.</p>'}
-      <div class="fit-chart">
-        <div class="fit-iso"><div data-v="w">${renderVo2Iso({ ...spec(1) })}</div><div data-v="c">${renderVo2Iso({ ...spec(1), compact: true })}</div></div>
+      ${spec ? `<div class="fit-chart">
+        <div class="fit-iso"><div data-v="w">${renderVo2Iso(spec)}</div><div data-v="c">${renderVo2Iso({ ...spec, compact: true })}</div></div>
         ${N ? `<p class="fit-cap">Hatched columns: medians from ${esc(N.src)}, to the same scale as yours. The dashed line is your level.${F.modality === 'cycle' ? ' Bike results run lower than treadmill results, so yours is compared with bike tests.' : ''}</p>` : ''}
-      </div>
+      </div>` : ''}
     </div>
   </div></section>`;
 }
@@ -1311,19 +1313,35 @@ $('#app').innerHTML = (HERO_Q === 'target' || HERO_Q === 'iso' ? targetHero() : 
   }
 }
 renderLedger();
-/* Fitness: the columns rise once, when the section comes into view */
-if (FIT) {
+/* Fitness: the columns rise once, when the section comes into view. Only the drawing
+   that is showing animates (the other is display:none); fitSettle draws both at full
+   height and is called at the end, and on the way into print, so paper never gets an
+   empty chart or a "0.0" from a section the patient hadn't scrolled to. */
+let fitDone = !MOTION;
+function fitSettle() {
+  if (fitDone || !FIT || !FIT.spec) return;
+  fitDone = true;
+  const box = document.getElementById('fitness'); if (!box) return;
+  box.querySelectorAll('.fit-iso [data-v]').forEach(el => { el.innerHTML = renderVo2Iso({ ...FIT.spec, compact: el.dataset.v === 'c' }); });
+  const num = box.querySelector('.fit-num .v'); if (num) num.textContent = num.dataset.to;
+}
+if (MOTION && FIT && FIT.spec) {
   const box = document.getElementById('fitness');
-  const spec = { cols: FIT.cols, prev: FIT.prev ? { value: FIT.prev.value, label: `${formatYear(FIT.prev.date)}: ${FIT.prev.value.toFixed(1)}` } : null, aria: FIT.aria };
-  const draw = g => box.querySelectorAll('.fit-iso [data-v]').forEach(el => { el.innerHTML = renderVo2Iso({ ...spec, compact: el.dataset.v === 'c', grow: g }); });
-  if (MOTION && box) {
-    draw(0); const n0 = box.querySelector('.fit-num .v'); if (n0) n0.textContent = '0.0';
-    const io = new IntersectionObserver(es => { if (!es.some(e => e.isIntersecting)) return; io.disconnect();
-      const num = box.querySelector('.fit-num .v'), to = num ? +num.dataset.to : 0;
-      const t0 = performance.now(), step = now => { const k = Math.min(1, (now - t0) / 1100), e = 1 - Math.pow(1 - k, 3); draw(e); if (num) num.textContent = (to * e).toFixed(1); if (k < 1) requestAnimationFrame(step); };
-      requestAnimationFrame(step); }, { threshold: .35 });
-    io.observe(box);
-  }
+  const num = box.querySelector('.fit-num .v'), to = +num.dataset.to;
+  const shown = () => [...box.querySelectorAll('.fit-iso [data-v]')].filter(el => el.offsetParent !== null);
+  const draw = g => shown().forEach(el => { el.innerHTML = renderVo2Iso({ ...FIT.spec, compact: el.dataset.v === 'c', grow: g }); });
+  draw(0); num.textContent = '0.0';
+  const io = new IntersectionObserver(es => {
+    if (!es.some(e => e.isIntersecting) || fitDone) return; io.disconnect();
+    const t0 = performance.now(), step = now => {
+      if (fitDone) return;
+      const k = Math.min(1, (now - t0) / 1100), e = 1 - Math.pow(1 - k, 3);
+      draw(e); num.textContent = (to * e).toFixed(1);
+      if (k < 1) requestAnimationFrame(step); else fitSettle();
+    };
+    requestAnimationFrame(step);
+  }, { threshold: .35 });
+  io.observe(box);
 }
 
 /* Nine of the ten printed sheets carried nothing saying whose results they
@@ -1428,7 +1446,7 @@ function relayoutCharts() { $$('.lc').forEach(el => { el._w = 0; el._h = 0; }); 
    one at all. They are data URIs - there is nothing to fetch - so eager is
    free at print time. */
 function eagerImages() { $$('img[loading="lazy"]').forEach(i => { i.loading = 'eager'; if (!i.complete && i.src) i.src = i.src; }); }
-function preparePrint() { eagerImages(); relayoutCharts(); }
+function preparePrint() { eagerImages(); relayoutCharts(); fitSettle(); }
 addEventListener('beforeprint', preparePrint);
 addEventListener('afterprint', relayoutCharts);
 try { const pmq = matchMedia('print'); if (pmq.addEventListener) pmq.addEventListener('change', preparePrint); } catch (e) { /* older engines */ }
