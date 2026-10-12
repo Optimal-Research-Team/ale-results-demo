@@ -28,7 +28,7 @@ function renderVo2Iso(o) {
   const top = Math.max(50, Math.ceil(Math.max(...o.cols.map(c => c.value)) / 10) * 10);
   const ZK = (compact ? 130 : 138) / top, X0 = -14, X1 = L + 14, GH = 5;
   const ax = a => (a - A0) / (A1 - A0) * L;
-  const padL = compact ? 40 : 44, padT = 30;
+  const padL = compact ? 48 : 50, padT = 30;
   const ox = padL + D * CB, oy = padT + top * ZK - X0 * SA;
   const P = (x, y, z) => [ox + x * CA - y * CB, oy + x * SA + y * SB - z];
   const pts = a => a.map(p => `${f1(p[0])} ${f1(p[1])}`).join('L');
@@ -43,10 +43,19 @@ function renderVo2Iso(o) {
   /* the wall behind, ruled every 10 */
   const zw = top * ZK + 8;
   out.push(poly([P(X0, 0, 0), P(X1, 0, 0), P(X1, 0, zw), P(X0, 0, zw)], '#FBF9F4'));
+  const me = o.cols.find(c => c.kind === 'you');
   for (let v = 10; v <= top; v += 10) {
     const a = P(X0, 0, v * ZK), b = P(X1, 0, v * ZK);
     out.push(`<line x1="${f1(a[0])}" y1="${f1(a[1])}" x2="${f1(b[0])}" y2="${f1(b[1])}" stroke="#D9D3C7" stroke-width=".7"/>`);
-    out.push(`<text x="${f1(a[0] - 5)}" y="${f1(a[1] + 3.5)}" text-anchor="end" font-size="${fs(9.5, 10)}" fill="#8C877D" font-family="var(--mono, ui-monospace, Menlo, monospace)">${v}</text>`);
+    if (!me || grow < .98 || Math.abs(v - me.value) > 4) out.push(`<text x="${f1(a[0] - 5)}" y="${f1(a[1] + 3.5)}" text-anchor="end" font-size="${fs(9.5, 10)}" fill="#8C877D" font-family="var(--mono, ui-monospace, Menlo, monospace)">${v}</text>`);
+  }
+  /* the patient's level, run across the wall from the scale to their column: what stands
+     under it is lower, what pokes through is higher. It rises with the column. */
+  if (me) {
+    const z = me.value * ZK * grow, a = P(X0, 0, z), b = P(ax(me.age) - CW / 2, 0, z);
+    out.push(`<line x1="${f1(a[0])}" y1="${f1(a[1])}" x2="${f1(b[0])}" y2="${f1(b[1])}" stroke="#2C4E25" stroke-width="1.1" stroke-dasharray="4 3" opacity="${grow > .05 ? .85 : 0}"/>`);
+    const tw = fs(30, 32);
+    out.push(`<g opacity="${grow > .05 ? 1 : 0}"><rect x="${f1(a[0] - tw - 3)}" y="${f1(a[1] - 8)}" width="${tw}" height="16" rx="8" fill="#2C4E25"/><text x="${f1(a[0] - 3 - tw / 2)}" y="${f1(a[1] + 3.6)}" text-anchor="middle" font-size="${fs(9.5, 10)}" font-weight="600" fill="#FFFCF7" font-family="var(--mono, ui-monospace, Menlo, monospace)">${(me.value * grow).toFixed(1)}</text></g>`);
   }
   const u = P(X0, 0, zw);
   out.push(`<text x="${f1(u[0] - 5)}" y="${f1(u[1] - 6)}" text-anchor="start" font-size="${fs(9.5, 10)}" fill="#8C877D">ml/kg/min</text>`);
@@ -88,8 +97,16 @@ function renderVo2Iso(o) {
       out.push(`<text x="${f1(s1[0] + 4)}" y="${f1(s1[1] + 3.5)}" font-size="${fs(10.5, 11)}" fill="#474747">${H(o.prev.label)}</text>`);
     }
     /* the value on top, the name and its note under the floor */
-    const t = P((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2, b.z);
-    out.push(`<text x="${f1(t[0])}" y="${f1(t[1] - 9)}" text-anchor="middle" font-family="var(--serif, Castoro, Georgia, serif)" font-size="${you ? fs(21, 22) : fs(15, 16)}" fill="${you ? '#1A500F' : '#474747'}" opacity="${grow > .6 ? 1 : 0}">${H(c.value.toFixed(1))}</text>`);
+    if (you) {
+      const t = P((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2, b.z);
+      /* lifted clear of the reading line, which meets the wall just above this column's top */
+      out.push(`<text x="${f1(t[0] + 4)}" y="${f1(t[1] - 27)}" text-anchor="middle" font-family="var(--serif, Castoro, Georgia, serif)" font-size="${fs(21, 22)}" fill="#1A500F" opacity="${grow > .6 ? 1 : 0}">${H(c.value.toFixed(1))}</text>`);
+    } else if (b.z > 30) {
+      /* a median's value sits on a tag on its own face, below the top, so the patient's
+         reading line (which can run just over a median) never crosses it */
+      const t = P((b.x0 + b.x1) / 2, b.y1, b.z - fs(16, 15)), tw = fs(30, 32);
+      out.push(`<g opacity="${grow > .6 ? 1 : 0}"><rect x="${f1(t[0] - tw / 2)}" y="${f1(t[1] - 8)}" width="${tw}" height="15" rx="3" fill="#FFFCF7" stroke="#B9B2A5" stroke-width=".6"/><text x="${f1(t[0])}" y="${f1(t[1] + 3.4)}" text-anchor="middle" font-size="${fs(10, 10.5)}" font-weight="600" fill="#474747" font-family="var(--mono, ui-monospace, Menlo, monospace)">${H(c.value.toFixed(1))}</text></g>`);
+    }
     const f = P((b.x0 + b.x1) / 2, D + 3, -GH);
     if (you) out.push(`<path d="M${f1(f[0])} ${f1(f[1] - 1)}l-4 6h8z" fill="#2C4E25"/>`);
     out.push(`<text x="${f1(f[0])}" y="${f1(f[1] + (you ? 20 : 15))}" text-anchor="middle" font-size="${fs(10.5, 11.5)}" font-weight="600" fill="${you ? '#1A500F' : '#474747'}">${H(c.label)}</text>`);

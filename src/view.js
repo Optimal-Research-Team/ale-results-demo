@@ -964,30 +964,35 @@ const FIT = (() => {
   const N = VO2_NORMS[F.modality] || null, sex = V.patient.sex === 'F' ? 'F' : 'M', who = sex === 'F' ? 'Women' : 'Men', age = V.patient.ageAtExam;
   const cols = N ? N[sex].map(([dec, a, v]) => ({ age: a, value: v, label: `${who} in their ${dec}`, sub: 'median', kind: 'median' })) : [];
   cols.push({ age: age || 45, value: last.value, label: age ? `You, ${age}` : 'You', sub: formatYear(last.date), kind: 'you' });
-  const hi = N && N[sex][0], lo = N && N[sex][1];
-  const place = !N ? '' : last.value >= hi[2] ? `At or above the median for ${who.toLowerCase()} in their ${hi[0]} (${hi[2].toFixed(1)}).`
-    : last.value >= lo[2] ? `Between the medians for ${who.toLowerCase()} in their ${hi[0]} (${hi[2].toFixed(1)}) and their ${lo[0]} (${lo[2].toFixed(1)}).`
-    : `Below the median for ${who.toLowerCase()} in their ${lo[0]} (${lo[2].toFixed(1)}).`;
-  return { F, last, prev, N, cols, place, word: N ? N.word : 'exercise', aria: `VO2max ${last.value.toFixed(1)} ${F.unit}${N ? `, beside the published ${N.word} medians for ${who.toLowerCase()} in their ${hi[0]} (${hi[2]}) and ${lo[0]} (${lo[2]})` : ''}.` };
+  const hi = N && N[sex][0], lo = N && N[sex][1], w = who.toLowerCase(), v1 = Math.round(last.value * 10) / 10;
+  /* where the score sits, said once, with the median it is measured against */
+  const cmp = !N ? null : v1 > hi[2] ? { lead: 'Above', rest: `the median for ${w} in their ${hi[0]}`, vals: [hi[2]] }
+    : v1 === hi[2] ? { lead: 'At', rest: `the median for ${w} in their ${hi[0]}`, vals: [hi[2]] }
+    : v1 >= lo[2] ? { lead: 'Between', rest: `the medians for ${w} in their ${hi[0]} and ${lo[0]}`, vals: [hi[2], lo[2]] }
+    : { lead: 'Below', rest: `the median for ${w} in their ${lo[0]}`, vals: [lo[2]] };
+  const d = prev ? Math.round((last.value - prev.value) * 10) / 10 : null;
+  return { F, last, prev, N, cols, cmp, d, word: N ? N.word : 'exercise', aria: `VO2max ${last.value.toFixed(1)} ${F.unit}${N ? `, beside the published ${N.word} medians for ${w} in their ${hi[0]} (${hi[2]}) and ${lo[0]} (${lo[2]})` : ''}.` };
 })();
 function fitness() {
   if (!FIT) return '';
-  const { F, last, prev, N } = FIT;
+  const { F, last, prev, N, cmp, d } = FIT;
   const spec = g => ({ cols: FIT.cols, prev: prev ? { value: prev.value, label: `${formatYear(prev.date)}: ${prev.value.toFixed(1)}` } : null, aria: FIT.aria, grow: g });
+  const shortDate = new Date(last.date + 'T12:00:00').toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
+  const test = `${FIT.word[0].toUpperCase()}${FIT.word.slice(1)} ramp test · ${shortDate}`;
   return `<section id="fitness" class="s-fit"><div class="wrap">
     <div class="head split"><div><p class="eyebrow">Fitness · VO₂max</p><h2 class="d2">How much oxygen <em>you can use</em></h2></div>
-      <div class="split-r"><p class="lede">VO₂max is the most oxygen your heart and muscles can deliver and use at full effort. Yours was measured on a ${esc(FIT.word)} ramp test on <span class="num">${esc(formatLongDate(last.date))}</span>.</p></div></div>
+      <div class="split-r"><p class="lede">VO₂max is the most oxygen your heart and muscles can deliver and use at full effort. The higher it is, the more work your body can do before it runs out of breath.</p></div></div>
     <div class="fit-grid${F.modality === 'cycle' ? '' : ' no-bike'}">
-      ${F.modality === 'cycle' ? '<div class="fit-bike" aria-hidden="true"><optimal-vo2-bike theme="light"></optimal-vo2-bike></div>' : ''}
+      ${F.modality === 'cycle' ? `<figure class="fit-bike"><div class="fit-medal" aria-hidden="true"><optimal-vo2-bike theme="light"></optimal-vo2-bike></div><figcaption>${esc(test)}</figcaption></figure>` : ''}
       <div class="fit-read">
-        <p class="fit-k">Your VO₂max · ${esc(formatYear(last.date))}</p>
-        <div class="fit-num"><span class="v num">${esc(last.value.toFixed(1))}</span><span class="u">${esc(F.unit)}</span></div>
-        ${prev ? `<p class="fit-mv"><span class="num">${esc(prev.value.toFixed(1))} → ${esc(last.value.toFixed(1))}</span> since ${esc(formatYear(prev.date))}</p>` : '<p class="fit-mv">Your first test</p>'}
-        ${FIT.place ? `<p class="fit-place">${esc(FIT.place)}</p>` : ''}
+        <p class="fit-k">Your VO₂max${F.modality === 'cycle' ? '' : ` · ${esc(test)}`}</p>
+        <div class="fit-num"><span class="v num" data-to="${esc(last.value.toFixed(1))}">${esc(last.value.toFixed(1))}</span><span class="u">${esc(F.unit)}</span></div>
+        <p class="fit-mv">${prev ? `<span class="fit-d">${d > 0 ? '↑' : d < 0 ? '↓' : ''}<b class="num">${d === 0 ? 'No change' : (d > 0 ? '+' : '−') + Math.abs(d).toFixed(1)}</b></span><span>since ${esc(formatYear(prev.date))} <span class="num">(${esc(prev.value.toFixed(1))})</span></span>` : '<span>Your first test</span>'}</p>
       </div>
+        ${cmp ? `<div class="fit-cmp"><p class="fit-ck">Compared with ${esc(FIT.word)} tests</p><p class="fit-cs"><b>${esc(cmp.lead)}</b> ${esc(cmp.rest)}${cmp.vals.map(v => ` <span class="fit-mv-v num">${esc(v.toFixed(1))}</span>`).join(cmp.vals.length > 1 ? ' and' : '')}</p></div>` : '<p class="fit-cs">No published median for this kind of test, so it isn\u2019t compared.</p>'}
       <div class="fit-chart">
         <div class="fit-iso"><div data-v="w">${renderVo2Iso({ ...spec(1) })}</div><div data-v="c">${renderVo2Iso({ ...spec(1), compact: true })}</div></div>
-        <p class="fit-cap">${N ? `Hatched columns: medians from ${esc(N.src)}, to the same scale as yours.${F.modality === 'cycle' ? ' Bike results run lower than treadmill results, so yours is compared with bike tests.' : ''}` : 'There is no published median for this kind of test, so your result isn\u2019t compared.'}</p>
+        ${N ? `<p class="fit-cap">Hatched columns: medians from ${esc(N.src)}, to the same scale as yours. The dashed line is your level.${F.modality === 'cycle' ? ' Bike results run lower than treadmill results, so yours is compared with bike tests.' : ''}</p>` : ''}
       </div>
     </div>
   </div></section>`;
@@ -1312,9 +1317,10 @@ if (FIT) {
   const spec = { cols: FIT.cols, prev: FIT.prev ? { value: FIT.prev.value, label: `${formatYear(FIT.prev.date)}: ${FIT.prev.value.toFixed(1)}` } : null, aria: FIT.aria };
   const draw = g => box.querySelectorAll('.fit-iso [data-v]').forEach(el => { el.innerHTML = renderVo2Iso({ ...spec, compact: el.dataset.v === 'c', grow: g }); });
   if (MOTION && box) {
-    draw(0);
+    draw(0); const n0 = box.querySelector('.fit-num .v'); if (n0) n0.textContent = '0.0';
     const io = new IntersectionObserver(es => { if (!es.some(e => e.isIntersecting)) return; io.disconnect();
-      const t0 = performance.now(), step = now => { const k = Math.min(1, (now - t0) / 1100), e = 1 - Math.pow(1 - k, 3); draw(e); if (k < 1) requestAnimationFrame(step); };
+      const num = box.querySelector('.fit-num .v'), to = num ? +num.dataset.to : 0;
+      const t0 = performance.now(), step = now => { const k = Math.min(1, (now - t0) / 1100), e = 1 - Math.pow(1 - k, 3); draw(e); if (num) num.textContent = (to * e).toFixed(1); if (k < 1) requestAnimationFrame(step); };
       requestAnimationFrame(step); }, { threshold: .35 });
     io.observe(box);
   }
