@@ -977,13 +977,17 @@ function fitness() {
   return `<section id="fitness" class="s-fit"><div class="wrap">
     <div class="head split"><div><p class="eyebrow">Fitness · VO₂max</p><h2 class="d2">How much oxygen <em>you can use</em></h2></div>
       <div class="split-r"><p class="lede">VO₂max is the most oxygen your heart and muscles can deliver and use at full effort. Yours was measured on a ${esc(FIT.word)} ramp test on <span class="num">${esc(formatLongDate(last.date))}</span>.</p></div></div>
-    <div class="fit-grid">
-      <div class="fit-bike" aria-hidden="true">${F.modality === 'cycle' ? '<optimal-vo2-bike theme="light"></optimal-vo2-bike>' : ''}</div>
-      <div class="fit-main">
+    <div class="fit-grid${F.modality === 'cycle' ? '' : ' no-bike'}">
+      ${F.modality === 'cycle' ? '<div class="fit-bike" aria-hidden="true"><optimal-vo2-bike theme="light"></optimal-vo2-bike></div>' : ''}
+      <div class="fit-read">
+        <p class="fit-k">Your VO₂max · ${esc(formatYear(last.date))}</p>
         <div class="fit-num"><span class="v num">${esc(last.value.toFixed(1))}</span><span class="u">${esc(F.unit)}</span></div>
-        <p class="fit-sub">${prev ? `<span class="num">${esc(prev.value.toFixed(1))} → ${esc(last.value.toFixed(1))}</span> since ${esc(formatYear(prev.date))}` : 'Your first test'}${FIT.place ? `<span class="sep"> · </span>${esc(FIT.place)}` : ''}</p>
+        ${prev ? `<p class="fit-mv"><span class="num">${esc(prev.value.toFixed(1))} → ${esc(last.value.toFixed(1))}</span> since ${esc(formatYear(prev.date))}</p>` : '<p class="fit-mv">Your first test</p>'}
+        ${FIT.place ? `<p class="fit-place">${esc(FIT.place)}</p>` : ''}
+      </div>
+      <div class="fit-chart">
         <div class="fit-iso"><div data-v="w">${renderVo2Iso({ ...spec(1) })}</div><div data-v="c">${renderVo2Iso({ ...spec(1), compact: true })}</div></div>
-        <p class="fit-cap">${N ? `The grey columns are medians from ${esc(N.src)}, drawn to the same scale as yours.${F.modality === 'cycle' ? ' Bike results run lower than treadmill results, so yours is compared with bike tests.' : ''}` : 'There is no published median for this kind of test, so your result isn’t compared.'}</p>
+        <p class="fit-cap">${N ? `Hatched columns: medians from ${esc(N.src)}, to the same scale as yours.${F.modality === 'cycle' ? ' Bike results run lower than treadmill results, so yours is compared with bike tests.' : ''}` : 'There is no published median for this kind of test, so your result isn\u2019t compared.'}</p>
       </div>
     </div>
   </div></section>`;
